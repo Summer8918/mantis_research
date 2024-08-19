@@ -1,0 +1,11 @@
+{
+    "dump_eqclass_dist": false,
+    "end_time": "Mon Aug 19 14:34:49 2024",
+    "index_version": 0,
+    "input_list": "raw/incqfs.lst",
+    "mantis_version": "0.2.0",
+    "num_threads": 1,
+    "output_dir": "raw/",
+    "quotient_bits": 20,
+    "start_time": "Mon Aug 19 14:34:48 2024"
+}
