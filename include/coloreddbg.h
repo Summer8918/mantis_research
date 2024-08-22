@@ -31,6 +31,8 @@
 #define MANTIS_DBG_IN_MEMORY (0x01)
 #define MANTIS_DBG_ON_DISK (0x02)
 
+typedef std::vector<int> CountVector;
+
 typedef sdsl::bit_vector BitVector;
 typedef sdsl::rrr_vector<63> BitVectorRRR;
 
@@ -89,18 +91,27 @@ class ColoredDbg {
 		// and false otherwise.
 		bool add_kmer(const typename key_obj::kmer_t& hash, const BitVector&
 									vector);
+		bool add_kmer2(const typename key_obj::kmer_t& hash, const CountVector&
+									vector);
+		void add_countvector(const CountVector& vector, uint64_t eq_id);
 		void add_bitvector(const BitVector& vector, uint64_t eq_id);
 		void add_eq_class(BitVector vector, uint64_t id);
+		void add_eq_class2(CountVector vector, uint64_t id);
 		uint64_t get_next_available_id(void);
 		void bv_buffer_serialize();
+		void cv_buffer_serialize();
 		void reshuffle_bit_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
 															 uint64_t>>& map);
-
+		void reshuffle_count_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
+															 uint64_t>>& map);
 		std::unordered_map<uint64_t, std::string> sampleid_map;
 		// bit_vector --> <eq_class_id, abundance>
 		cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>> eqclass_map;
 		CQF<key_obj> dbg;
 		BitVector bv_buffer;
+
+		CountVector cv_buffer;
+
 		std::vector<BitVectorRRR> eqclasses;
 		std::string prefix;
 		uint64_t num_samples;
