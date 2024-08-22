@@ -514,14 +514,14 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 	}
 
 	while (!minheap.empty()) {
-		BitVector eq_class(num_samples);
+		// BitVector eq_class(num_samples);
 		CountVector eq_class2(num_samples);
 
 		KeyObject::kmer_t last_key;
 		do {
 			Iterator& cur = minheap.top();
 			last_key = cur.key();
-			eq_class[cur.id] = 1;
+			// eq_class[cur.id] = 1;
 			// console->info("cur.id {}", cur.id); is 0 and 1
 			eq_class2[cur.id] = 1;
 			if (cur.next())
