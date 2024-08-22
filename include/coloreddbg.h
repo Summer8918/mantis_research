@@ -526,7 +526,7 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(uint64_t qbits, uint64_t key_bits,
 																				uint32_t seed, std::string& prefix,
 																				uint64_t nqf, int flag) :
 	bv_buffer(mantis::NUM_BV_BUFFER * nqf), prefix(prefix), num_samples(nqf),
-	num_serializations(0), start_time_(std::time(nullptr)) {
+	num_serializations(0), start_time_(std::time(nullptr)), cv_buffer(mantis::NUM_BV_BUFFER * nqf) {
 		if (flag == MANTIS_DBG_IN_MEMORY) {
 			CQF<key_obj> cqf(qbits, key_bits, hashmode, seed);
 			dbg = cqf;
