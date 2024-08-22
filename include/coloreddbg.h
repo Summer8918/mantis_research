@@ -96,7 +96,6 @@ class ColoredDbg {
 		void add_countvector(const CountVector& vector, uint64_t eq_id);
 		void add_bitvector(const BitVector& vector, uint64_t eq_id);
 		void add_eq_class(BitVector vector, uint64_t id);
-		void add_eq_class2(CountVector vector, uint64_t id);
 		uint64_t get_next_available_id(void);
 		void bv_buffer_serialize();
 		void cv_buffer_serialize();
@@ -215,6 +214,53 @@ void ColoredDbg<qf_obj, key_obj>::reinit(cdbg_bv_map_t<__uint128_t,
 }
 
 template <class qf_obj, class key_obj>
+bool ColoredDbg<qf_obj, key_obj>::add_kmer2(const typename key_obj::kmer_t& key, const CountVector&
+									vector) {
+    // A kmer (hash) is seen only once during the merge process.
+	// So we insert every kmer in the dbg
+	uint64_t eq_id;
+	//console->info("vector.size() {}", vector.size());
+	// (((vector.size() * 32 + 63) >> 6) << 6) / 8 is to make it align with 64 bits
+	__uint128_t vec_hash = MurmurHash128A((void*)vector.data(),
+											(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											2038074751);
+	auto it = eqclass_map.find(vec_hash);
+	bool added_eq_class{false};
+	// Find if the eqclass of the kmer is already there.
+	// If it is there then increment the abundance.
+	// Else create a new eq class.
+	if (it == eqclass_map.end()) {
+		eq_id = get_next_available_id();
+		eqclass_map.emplace(std::piecewise_construct,
+												std::forward_as_tuple(vec_hash),
+												std::forward_as_tuple(eq_id, 1));
+		add_countvector(vector, eq_id - 1);
+		added_eq_class = true;
+	} else { // eq class is seen before so increment the abundance.
+		eq_id = it->second.first;
+		// with standard map
+		it->second.second += 1; // update the abundance.
+	}
+
+	// check: the k-mer should not already be present.
+	uint64_t count = dbg.query(KeyObject(key,0,eq_id), QF_NO_LOCK |
+													   QF_KEY_IS_HASH);
+	if (count > 0) {
+		console->error("in add k-mer 2 K-mer was already present. kmer: {} eqid: {}", key, count);
+		exit(1);
+	}
+
+	// we use the count to store the eqclass ids
+	int ret = dbg.insert(KeyObject(key,0,eq_id), QF_NO_LOCK | QF_KEY_IS_HASH);
+	if (ret == QF_NO_SPACE) {
+		// This means that auto_resize failed. 
+		console->error("The CQF is full and auto resize failed. Please rerun build with a bigger size.");
+		exit(1);
+	}
+	return added_eq_class;
+}
+
+template <class qf_obj, class key_obj>
 bool ColoredDbg<qf_obj, key_obj>::add_kmer(const typename key_obj::kmer_t&
 																					 key, const BitVector& vector) {
 	// A kmer (hash) is seen only once during the merge process.
@@ -260,6 +306,14 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer(const typename key_obj::kmer_t&
 	}
 
 	return added_eq_class;
+}
+
+template <class qf_obj, class key_obj>
+void ColoredDbg<qf_obj, key_obj>::add_countvector(const CountVector& vector, uint64_t eq_id) {
+	uint64_t start_idx = (eq_id % mantis::NUM_CV_BUFFER) * num_samples;
+	for (uint32_t i = 0; i < num_samples; i++) {
+		cv_buffer[start_idx + i] = vector[i];
+	}
 }
 
 template <class qf_obj, class key_obj>
@@ -475,7 +529,8 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 			else
 				minheap.pop();
 		} while(!minheap.empty() && last_key == minheap.top().key());
-		bool added_eq_class = add_kmer(last_key, eq_class);
+		//bool added_eq_class = add_kmer(last_key, eq_class);
+		bool added_eq_class = add_kmer2(last_key, eq_class2);
 		++counter;
 
     if (counter == 4096) {
