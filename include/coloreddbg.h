@@ -170,9 +170,32 @@ uint64_t ColoredDbg<qf_obj, key_obj>::get_num_bitvectors(void) const {
 }
 
 template <class qf_obj, class key_obj>
+void ColoredDbg<qf_obj,key_obj>::reshuffle_count_vectors(cdbg_bv_map_t<__uint128_t, 
+			std::pair<uint64_t, uint64_t>>& map) {
+	CountVector new_cv_buffer(mantis::NUM_CV_BUFFER * num_samples);
+	for (auto &it_input : map) {
+		auto it_local = eqclass_map.find(it_input.first);
+		if (it_local == eqclass_map.end()) {
+			console->error("Can't find the vector hash during shuffling");
+			exit(1);
+		}
+		assert(it_local->second.first <= mantis::NUM_CV_BUFFER &&
+							it_input.second.first <= mantis::NUM_CV_BUFFER);
+		uint64_t src_idx = ((it_local->second.first - 1) * num_samples);
+		uint64_t dest_idx = ((it_input.second.first - 1) * num_samples);
+		for (uint32_t i = 0; i < num_samples; i++, src_idx++, dest_idx++) {
+			if (cv_buffer[src_idx]) {
+				new_cv_buffer[dest_idx] = 1;
+			}
+		}
+	}
+	cv_buffer = new_cv_buffer;
+}
+
+template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj,
 		 key_obj>::reshuffle_bit_vectors(cdbg_bv_map_t<__uint128_t,
-																		 std::pair<uint64_t, uint64_t>>& map) {
+										std::pair<uint64_t, uint64_t>>& map) {
 			 BitVector new_bv_buffer(mantis::NUM_BV_BUFFER * num_samples);
 			 for (auto& it_input : map) {
 				 auto it_local = eqclass_map.find(it_input.first);
@@ -194,7 +217,7 @@ void ColoredDbg<qf_obj,
 
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::reinit(cdbg_bv_map_t<__uint128_t,
-																				 std::pair<uint64_t, uint64_t>>& map) {
+										std::pair<uint64_t, uint64_t>>& map) {
 	// dbg.reset();
 	uint64_t qbits = log2(dbg.numslots());
 	uint64_t keybits = dbg.keybits();
@@ -204,7 +227,8 @@ void ColoredDbg<qf_obj, key_obj>::reinit(cdbg_bv_map_t<__uint128_t,
 	CQF<key_obj>cqf(qbits, keybits, hashmode, seed, prefix + mantis::CQF_FILE);
 	dbg = cqf;
 
-	reshuffle_bit_vectors(map);
+	reshuffle_count_vectors(map);
+	//reshuffle_bit_vectors(map);
 	// Check if the current bit vector buffer is full and needs to be serialized.
 	// This happens when the sampling phase fills up the bv buffer.
 	if (get_num_eqclasses() % mantis::NUM_BV_BUFFER == 0) {
