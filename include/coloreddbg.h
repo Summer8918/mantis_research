@@ -231,11 +231,12 @@ void ColoredDbg<qf_obj, key_obj>::reinit(cdbg_bv_map_t<__uint128_t,
 	//reshuffle_bit_vectors(map);
 	// Check if the current bit vector buffer is full and needs to be serialized.
 	// This happens when the sampling phase fills up the bv buffer.
-	if (get_num_eqclasses() % mantis::NUM_BV_BUFFER == 0) {
+	if (get_num_eqclasses() % mantis::NUM_CV_BUFFER == 0) {
 		// The bit vector buffer is full.
 		console->info("Serializing bit vector with {} eq classes.",
 									get_num_eqclasses());
-		bv_buffer_serialize();
+		//bv_buffer_serialize();
+		cv_buffer_serialize();
 	}
 	eqclass_map = map;
 }
@@ -397,7 +398,7 @@ void ColoredDbg<qf_obj, key_obj>::serialize() {
 
 	// serialize the bv buffer last time if needed
 	if (get_num_eqclasses() % mantis::NUM_BV_BUFFER > 0)
-		bv_buffer_serialize();
+		cv_buffer_serialize();
 
 	//serialize the eq class id map
 	std::ofstream opfile(prefix + mantis::SAMPLEID_FILE);
