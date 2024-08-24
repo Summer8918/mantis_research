@@ -18,6 +18,9 @@
 #include <unordered_set>
 #include <chrono>
 
+#include <iostream>
+#include <vector>
+#include <fstream>
 #include <inttypes.h>
 
 #include "sparsepp/spp.h"
@@ -345,6 +348,22 @@ void ColoredDbg<qf_obj, key_obj>::bv_buffer_serialize() {
 }
 
 template <class qf_obj, class key_obj>
+void ColoredDbg<qf_obj, key_obj>::cv_buffer_serialize() {
+	std::string cv_file(prefix + std::to_string(num_serializations) + "_" +
+											mantis::EQCLASS_FILE);
+    std::ofstream outFile(cv_file, std::ios::binary);
+    if (outFile) {
+        size_t size = cv_buffer.size();
+        outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
+        outFile.write(reinterpret_cast<const char*>(cv_buffer.data()), size * sizeof(int));
+        outFile.close();
+    } else {
+		console->error("Error opening file when serializing cv buffer!");
+    }
+	num_serializations++;
+}
+
+template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::serialize() {
 	// serialize the CQF
 	if (dbg_alloc_flag == MANTIS_DBG_IN_MEMORY)
@@ -524,20 +543,22 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 			// eq_class[cur.id] = 1;
 			// console->info("cur.id {}", cur.id); is 0 and 1
 			eq_class2[cur.id] = 1;
-			if (cur.next())
+			if (cur.next()) {
 				minheap.replace_top(cur);
-			else
+			}
+			else {
 				minheap.pop();
+			}
 		} while(!minheap.empty() && last_key == minheap.top().key());
 		//bool added_eq_class = add_kmer(last_key, eq_class);
 		bool added_eq_class = add_kmer2(last_key, eq_class2);
 		++counter;
 
-    if (counter == 4096) {
-      walk_behind_iterator = dbg.begin();
-    } else if (counter > 4096) {
-      ++walk_behind_iterator;
-    }
+    	if (counter == 4096) {
+      		walk_behind_iterator = dbg.begin();
+    	} else if (counter > 4096) {
+      		++walk_behind_iterator;
+    	}
     
 		// Progress tracker
 		static uint64_t last_size = 0;
@@ -550,7 +571,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 		}
 
 		// Check if the bit vector buffer is full and needs to be serialized.
-		if (added_eq_class and (get_num_eqclasses() % mantis::NUM_BV_BUFFER == 0))
+		if (added_eq_class and (get_num_eqclasses() % mantis::NUM_CV_BUFFER == 0))
 		{
 			// Check if the process is in the sampling phase.
 			if (is_sampling) {
@@ -559,7 +580,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 				// The bit vector buffer is full.
 				console->info("Serializing bit vector with {} eq classes.",
 											get_num_eqclasses());
-				bv_buffer_serialize();
+				cv_buffer_serialize();
 			}
 		} else if (counter > num_kmers) {
 			// Check if the sampling phase is finished based on the number of k-mers.
