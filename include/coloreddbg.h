@@ -349,6 +349,7 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 	std::unordered_map<uint64_t, std::vector<uint64_t>> query_eqclass_map;
 	for (auto kv : uniqueKmers) {
 		key_obj key(kv.first, 0, 0);
+		// eqclass id.
 		uint64_t eqclass = dbg.query(key, 0);
 		if (eqclass) {
 		    kv.second = eqclass;
@@ -535,9 +536,8 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(uint64_t qbits, uint64_t key_bits,
 
 template <class qf_obj, class key_obj>
 ColoredDbg<qf_obj, key_obj>::ColoredDbg(std::string& cqf_file,
-																				std::vector<std::string>&
-																				eqclass_files, std::string&
-																				sample_file, int flag) : bv_buffer(),
+										std::vector<std::string>& eqclass_files, 
+										std::string& sample_file, int flag) : bv_buffer(),
 	start_time_(std::time(nullptr)) {
 		num_samples = 0;
 		num_serializations = 0;
@@ -560,14 +560,15 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(std::string& cqf_file,
 			int id = std::stoi(first_part(last_part(file, '/'), '_'));
 			sorted_files[id] = file;
 		}
-
+		// std::vector<BitVectorRRR> eqclasses;
 		eqclasses.reserve(sorted_files.size());
+
 		BitVectorRRR bv;
 		for (auto file : sorted_files) {
 			sdsl::load_from_file(bv, file.second);
 			eqclasses.push_back(bv);
-			num_serializations++;
-		}
+			num_serializations++;  // 1
+		} 
 
 		std::ifstream sampleid(sample_file.c_str());
 		std::string sample;
