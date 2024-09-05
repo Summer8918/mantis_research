@@ -85,6 +85,7 @@ class ColoredDbg {
             find_samples(const std::unordered_map<mantis::KmerHash, uint64_t> &uniqueKmers);
 
 		void serialize();
+		
 		void reinit(default_cdbg_bv_map_t& map);
 		void set_flush_eqclass_dist(void) { flush_eqclass_dis = true; }
 
@@ -102,6 +103,7 @@ class ColoredDbg {
 		uint64_t get_next_available_id(void);
 		void bv_buffer_serialize();
 		void cv_buffer_serialize();
+		bool deserialize_eqclass(const std::string& filename, std::vector<int> &vec);
 		void reshuffle_bit_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
 															 uint64_t>>& map);
 		void reshuffle_count_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
@@ -114,7 +116,8 @@ class ColoredDbg {
 
 		CountVector cv_buffer;
 
-		std::vector<BitVectorRRR> eqclasses;
+		//std::vector<BitVectorRRR> eqclasses;
+		std::vector<CountVector> eqclasses;
 		std::string prefix;
 		uint64_t num_samples;
 		uint64_t num_serializations;
@@ -379,6 +382,7 @@ void ColoredDbg<qf_obj, key_obj>::cv_buffer_serialize() {
     std::ofstream outFile(cv_file, std::ios::binary);
     if (outFile) {
         size_t size = cv_buffer.size();
+		console->info("cv_buffer_serialize, output file name {}, cv_buffer size: {}", cv_file, cv_buffer.size());
         outFile.write(reinterpret_cast<const char*>(&size), sizeof(size));
         outFile.write(reinterpret_cast<const char*>(cv_buffer.data()), size * sizeof(int));
         outFile.close();
@@ -416,6 +420,22 @@ void ColoredDbg<qf_obj, key_obj>::serialize() {
 	}
 }
 
+template <class qf_obj, class key_obj> 
+bool ColoredDbg<qf_obj,key_obj>::deserialize_eqclass(const std::string& filename, std::vector<int> &vec) {
+    std::ifstream inFile(filename, std::ios::binary);
+    if (inFile) {
+        size_t size;
+        inFile.read(reinterpret_cast<char*>(&size), sizeof(size));
+        vec.resize(size);
+        inFile.read(reinterpret_cast<char*>(vec.data()), size * sizeof(int));
+        inFile.close();
+    } else {
+        std::cerr << "Error opening file for reading!" << std::endl;
+        return false;
+    }
+    return true;
+}
+
 template <class qf_obj, class key_obj>
 std::vector<uint64_t>
 ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
@@ -430,20 +450,30 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 	}
 
 	std::vector<uint64_t> sample_map(num_samples, 0);
+
+
 	for (auto it = query_eqclass_map.begin(); it != query_eqclass_map.end();
 			 ++it) {
 		auto eqclass_id = it->first;
 		auto count = it->second;
 		// counter starts from 1.
 		uint64_t start_idx = (eqclass_id - 1);
-		uint64_t bucket_idx = start_idx / mantis::NUM_BV_BUFFER;
-		uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
+		// uint64_t bucket_idx = start_idx / mantis::NUM_BV_BUFFER;
+		uint64_t bucket_idx = start_idx / mantis::NUM_CV_BUFFER;
+		// uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
+		uint64_t bucket_offset = (start_idx % mantis::NUM_CV_BUFFER) * num_samples;
 		for (uint32_t w = 0; w <= num_samples / 64; w++) {
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
-			uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
-			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++)
-				if ((wrd >> i) & 0x01)
+			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
+			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
+			// uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
+			std::vector<int> wrd(first, last);
+			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++) {
+				//if ((wrd >> i) & 0x01)
+				if (wrd[i] & 0x1) {
 					sample_map[sCntr] += count;
+				}
+			}
 			bucket_offset += len;
 		}
 	}
@@ -472,14 +502,23 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 		auto &vec = it->second;
 		// counter starts from 1.
 		uint64_t start_idx = (eqclass_id - 1);
-		uint64_t bucket_idx = start_idx / mantis::NUM_BV_BUFFER;
+		//uint64_t bucket_idx = start_idx / mantis::NUM_BV_BUFFER;
+		uint64_t bucket_idx = start_idx / mantis::NUM_CV_BUFFER;
+		//uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
 		uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
+		console->info("num_samples: {}", num_samples);
 		for (uint32_t w = 0; w <= num_samples / 64; w++) {
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
-			uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
-			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++)
-				if ((wrd >> i) & 0x01)
+			//uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
+			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
+			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
+			std::vector<int> wrd(first, last);
+			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++) {
+				//if ((wrd >> i) & 0x01)
+				if (wrd[i] & 0x1) {
 					vec.push_back(sCntr);
+				}
+			}
 			bucket_offset += len;
 		}
 	}
@@ -649,51 +688,57 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(uint64_t qbits, uint64_t key_bits,
 		dbg.set_auto_resize();
 	}
 
+
+
 template <class qf_obj, class key_obj>
 ColoredDbg<qf_obj, key_obj>::ColoredDbg(std::string& cqf_file,
-																				std::vector<std::string>&
-																				eqclass_files, std::string&
-																				sample_file, int flag) : bv_buffer(),
-	start_time_(std::time(nullptr)) {
-		num_samples = 0;
-		num_serializations = 0;
+										std::vector<std::string>& eqclass_files,
+										std::string& sample_file, int flag) : cv_buffer(),
+										start_time_(std::time(nullptr)) {
+	num_samples = 0;
+	num_serializations = 0;
 
-		if (flag == MANTIS_DBG_IN_MEMORY) {
-			CQF<key_obj>cqf(cqf_file, CQF_FREAD);
-			dbg = cqf;
-			dbg_alloc_flag = MANTIS_DBG_IN_MEMORY;
-		} else if (flag == MANTIS_DBG_ON_DISK) {
-			CQF<key_obj>cqf(cqf_file, CQF_MMAP);
-			dbg = cqf;
-			dbg_alloc_flag = MANTIS_DBG_ON_DISK;
-		} else {
-			ERROR("Wrong Mantis alloc mode.");
-			exit(EXIT_FAILURE);
-		}
+	if (flag == MANTIS_DBG_IN_MEMORY) {
+		CQF<key_obj>cqf(cqf_file, CQF_FREAD);
+		dbg = cqf;
+		dbg_alloc_flag = MANTIS_DBG_IN_MEMORY;
+	} else if (flag == MANTIS_DBG_ON_DISK) {
+		CQF<key_obj>cqf(cqf_file, CQF_MMAP);
+		dbg = cqf;
+		dbg_alloc_flag = MANTIS_DBG_ON_DISK;
+	} else {
+		ERROR("Wrong Mantis alloc mode.");
+		exit(EXIT_FAILURE);
+	}
 
-		std::map<int, std::string> sorted_files;
-		for (std::string file : eqclass_files) {
-			int id = std::stoi(first_part(last_part(file, '/'), '_'));
-			sorted_files[id] = file;
-		}
+	std::map<int, std::string> sorted_files;
+	for (std::string file : eqclass_files) {
+		console->info("eqclass files: {}", file);
+		int id = std::stoi(first_part(last_part(file, '/'), '_'));
+		sorted_files[id] = file;
+	}
 
-		eqclasses.reserve(sorted_files.size());
-		BitVectorRRR bv;
-		for (auto file : sorted_files) {
-			sdsl::load_from_file(bv, file.second);
-			eqclasses.push_back(bv);
-			num_serializations++;
-		}
+	eqclasses.reserve(sorted_files.size());
+	//BitVectorRRR bv;
+	CountVector cv;
 
-		std::ifstream sampleid(sample_file.c_str());
-		std::string sample;
-		uint32_t id;
-		while (sampleid >> id >> sample) {
-			std::pair<uint32_t, std::string> pair(id, sample);
-			sampleid_map.insert(pair);
-			num_samples++;
-		}
-		sampleid.close();
+	for (auto file : sorted_files) {
+		deserialize_eqclass(file.second, cv);
+		//sdsl::load_from_file(bv, file.second);
+		//eqclasses.push_back(bv);
+		eqclasses.push_back(cv);
+		num_serializations++;
+	}
+
+	std::ifstream sampleid(sample_file.c_str());
+	std::string sample;
+	uint32_t id;
+	while (sampleid >> id >> sample) {
+		std::pair<uint32_t, std::string> pair(id, sample);
+		sampleid_map.insert(pair);
+		num_samples++;
+	}
+	sampleid.close();
 }
 
 #endif

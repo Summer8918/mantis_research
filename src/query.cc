@@ -176,7 +176,8 @@ int query_main (QueryOpts& opt)
 
   spdlog::logger* console = opt.console.get();
 	console->info("Reading colored dbg from disk.");
-
+  console->info("query output file name:{}", output_file);
+  
 	std::string dbg_file(prefix + mantis::CQF_FILE);
 	std::string sample_file(prefix + mantis::SAMPLEID_FILE);
 	std::vector<std::string> eqclass_files = mantis::fs::GetFilesExt(prefix.c_str(),
@@ -206,7 +207,7 @@ int query_main (QueryOpts& opt)
 	console->info("Reading query kmers from disk.");
 	uint32_t seed = 2038074743;
 	uint64_t total_kmers = 0;
-    std::unordered_map<mantis::KmerHash, uint64_t> uniqueKmers;
+  std::unordered_map<mantis::KmerHash, uint64_t> uniqueKmers;
 	mantis::QuerySets multi_kmers = Kmer::parse_kmers(query_file.c_str(),
 																										kmer_size,
 																										total_kmers,
