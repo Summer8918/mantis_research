@@ -342,8 +342,11 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer(const typename key_obj::kmer_t&
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::add_countvector(const CountVector& vector, uint64_t eq_id) {
 	uint64_t start_idx = (eq_id % mantis::NUM_CV_BUFFER) * num_samples;
+	console->info("vector size:{}, num_samples:{}", vector.size(), num_samples);
+	console->info("eq_id:{}", eq_id);
 	for (uint32_t i = 0; i < num_samples; i++) {
 		cv_buffer[start_idx + i] = vector[i];
+		console->info("vector i:{}, val: {} ", i, vector[i]);
 	}
 }
 
@@ -445,12 +448,12 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 	for (auto k : kmers) {
 		key_obj key(k, 0, 0);
 		uint64_t eqclass = dbg.query(key, 0);
-		if (eqclass)
+		if (eqclass) {
 			query_eqclass_map[eqclass] += 1;
+		}
 	}
 
 	std::vector<uint64_t> sample_map(num_samples, 0);
-
 
 	for (auto it = query_eqclass_map.begin(); it != query_eqclass_map.end();
 			 ++it) {
@@ -462,8 +465,11 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 		uint64_t bucket_idx = start_idx / mantis::NUM_CV_BUFFER;
 		// uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
 		uint64_t bucket_offset = (start_idx % mantis::NUM_CV_BUFFER) * num_samples;
+		std::cout << "num samples" << num_samples << std::endl;
+		std::cout << "For k-mer start" << std::endl;
 		for (uint32_t w = 0; w <= num_samples / 64; w++) {
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
+			std::cout << "len:" << len << std::endl;
 			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
 			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
 			// uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
@@ -472,10 +478,12 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 				//if ((wrd >> i) & 0x01)
 				if (wrd[i] & 0x1) {
 					sample_map[sCntr] += count;
+					std::cout << "eqclass_id" << eqclass_id << "sample" << sCntr << std::endl;
 				}
 			}
 			bucket_offset += len;
 		}
+		std::cout << "For k-mer end" << std::endl;
 	}
 	return sample_map;
 }
@@ -506,9 +514,11 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 		uint64_t bucket_idx = start_idx / mantis::NUM_CV_BUFFER;
 		//uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
 		uint64_t bucket_offset = (start_idx % mantis::NUM_BV_BUFFER) * num_samples;
-		console->info("num_samples: {}", num_samples);
+		std::cout << "num samples" << num_samples << std::endl;
+		std::cout << "For k-mer start" << std::endl;
 		for (uint32_t w = 0; w <= num_samples / 64; w++) {
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
+			std::cout << "len:" << len << std::endl;
 			//uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
 			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
 			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
@@ -517,10 +527,13 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 				//if ((wrd >> i) & 0x01)
 				if (wrd[i] & 0x1) {
 					vec.push_back(sCntr);
+					std::cout << sCntr << std::endl;
 				}
+				
 			}
 			bucket_offset += len;
 		}
+		std::cout << "For k-mer end" << std::endl;
 	}
 	return query_eqclass_map;
 }
@@ -695,6 +708,8 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(std::string& cqf_file,
 										std::vector<std::string>& eqclass_files,
 										std::string& sample_file, int flag) : cv_buffer(),
 										start_time_(std::time(nullptr)) {
+	// Cannot use console->info() to print things here but can use PRINT(), why?
+	PRINT("Constructing ColoredDbg.\n");
 	num_samples = 0;
 	num_serializations = 0;
 
@@ -713,7 +728,6 @@ ColoredDbg<qf_obj, key_obj>::ColoredDbg(std::string& cqf_file,
 
 	std::map<int, std::string> sorted_files;
 	for (std::string file : eqclass_files) {
-		console->info("eqclass files: {}", file);
 		int id = std::stoi(first_part(last_part(file, '/'), '_'));
 		sorted_files[id] = file;
 	}

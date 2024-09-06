@@ -50,13 +50,14 @@ void output_results(mantis::QuerySets& multi_kmers,
 										cdbg, std::ofstream& opfile, bool is_bulk,
                     std::unordered_map<mantis::KmerHash, uint64_t> &uniqueKmers) {
   mantis::QueryResults qres;
+  opfile << "is_bulk" << is_bulk << std::endl;
 	uint32_t cnt= 0;
   {
     CLI::AutoTimer timer{"Query time ", CLI::Timer::Big};
     if (is_bulk) {
         std::unordered_map<uint64_t, std::vector<uint64_t>> result = cdbg.find_samples(uniqueKmers);
         for (auto& kmers : multi_kmers) {
-            opfile <<  cnt++ << '\t' << kmers.size() << '\n';
+            opfile <<  cnt++ << '  kmer size:\t' << kmers.size() << '\n';
             std::vector<uint64_t> kmerCnt(cdbg.get_num_samples());
             for (auto &k : kmers) {
                 if (uniqueKmers[k]) {
@@ -74,7 +75,7 @@ void output_results(mantis::QuerySets& multi_kmers,
     } else {
         for (auto &kmers : multi_kmers) {
             //std::sort(kmers.begin(), kmers.end());
-            opfile << cnt++ << '\t' << kmers.size() << '\n';
+            opfile << cnt++ << '\t  ' << kmers.size() << '\n';
             mantis::QueryResult result = cdbg.find_samples(kmers);
             for (auto i = 0; i < result.size(); ++i) {
                 if (result[i] > 0)
