@@ -34,7 +34,7 @@
 #define MANTIS_DBG_IN_MEMORY (0x01)
 #define MANTIS_DBG_ON_DISK (0x02)
 
-typedef std::vector<int> CountVector;
+typedef std::vector<uint64_t> CountVector;
 
 typedef sdsl::bit_vector BitVector;
 typedef sdsl::rrr_vector<63> BitVectorRRR;
@@ -103,7 +103,7 @@ class ColoredDbg {
 		uint64_t get_next_available_id(void);
 		void bv_buffer_serialize();
 		void cv_buffer_serialize();
-		bool deserialize_eqclass(const std::string& filename, std::vector<int> &vec);
+		bool deserialize_eqclass(const std::string& filename, CountVector &vec);
 		void reshuffle_bit_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
 															 uint64_t>>& map);
 		void reshuffle_count_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
@@ -253,14 +253,23 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer2(const typename key_obj::kmer_t& key,
 	//console->info("vector.size() {}", vector.size());
 	// (((vector.size() * 32 + 63) >> 6) << 6) / 8 is to make it align with 64 bits
 	__uint128_t vec_hash = MurmurHash128A((void*)vector.data(),
-											(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											//(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											(((vector.size() * 64 + 63) >> 6) << 6) / 8, 2038074743,
 											2038074751);
 	auto it = eqclass_map.find(vec_hash);
+
 	bool added_eq_class{false};
 	// Find if the eqclass of the kmer is already there.
 	// If it is there then increment the abundance.
 	// Else create a new eq class.
 	if (it == eqclass_map.end()) {
+		// Extracting the lower and higher 64 bits
+    	uint64_t lower_part = (uint64_t)vec_hash;  // Lower 64 bits
+    	uint64_t higher_part = (uint64_t)(vec_hash >> 64);  // Higher 64 bits
+
+    	// Printing the two parts
+    	std::cout << "vec_hash (lower 64 bits): " << lower_part << std::endl;
+    	std::cout << "vec_hash (higher 64 bits): " << higher_part << std::endl;
 		eq_id = get_next_available_id();
 		eqclass_map.emplace(std::piecewise_construct,
 												std::forward_as_tuple(vec_hash),
@@ -424,7 +433,7 @@ void ColoredDbg<qf_obj, key_obj>::serialize() {
 }
 
 template <class qf_obj, class key_obj> 
-bool ColoredDbg<qf_obj,key_obj>::deserialize_eqclass(const std::string& filename, std::vector<int> &vec) {
+bool ColoredDbg<qf_obj,key_obj>::deserialize_eqclass(const std::string& filename, CountVector &vec) {
     std::ifstream inFile(filename, std::ios::binary);
     if (inFile) {
         size_t size;
@@ -470,10 +479,10 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 		for (uint32_t w = 0; w <= num_samples / 64; w++) {
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
 			std::cout << "len:" << len << std::endl;
-			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
-			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
+			CountVector::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
+			CountVector::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
 			// uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
-			std::vector<int> wrd(first, last);
+			CountVector wrd(first, last);
 			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++) {
 				//if ((wrd >> i) & 0x01)
 				if (wrd[i] & 0x1) {
@@ -520,9 +529,9 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 			uint64_t len = std::min((uint64_t)64, num_samples - w * 64);
 			std::cout << "len:" << len << std::endl;
 			//uint64_t wrd = eqclasses[bucket_idx].get_int(bucket_offset, len);
-			std::vector<int>::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
-			std::vector<int>::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
-			std::vector<int> wrd(first, last);
+			CountVector::const_iterator first = eqclasses[bucket_idx].begin() + bucket_offset;
+			CountVector::const_iterator last = eqclasses[bucket_idx].begin() + bucket_offset + len;
+			CountVector wrd(first, last);
 			for (uint32_t i = 0, sCntr = w * 64; i < len; i++, sCntr++) {
 				//if ((wrd >> i) & 0x01)
 				if (wrd[i] & 0x1) {

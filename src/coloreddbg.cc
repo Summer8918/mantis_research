@@ -45,6 +45,46 @@
 #include "mantisconfig.hpp"
 
 /*
+[2024-09-13 00:13:03.655] [mantis_console] [info] Will build mantis index over 5 input experiments.
+vec_hash (lower 64 bits): 17113844035018972010
+vec_hash (higher 64 bits): 8467277998452021459
+vec_hash (lower 64 bits): 1893346405312485172
+vec_hash (higher 64 bits): 10012818295499979371
+why output different value
+*/
+void hash128DebugHelper(__uint128_t vec_hash) {
+    // Extracting the lower and higher 64 bits
+    uint64_t lower_part = (uint64_t)vec_hash;  // Lower 64 bits
+    uint64_t higher_part = (uint64_t)(vec_hash >> 64);  // Higher 64 bits
+
+    // Printing the two parts
+    std::cout << "vec_hash (lower 64 bits): " << lower_part << std::endl;
+    std::cout << "vec_hash (higher 64 bits): " << higher_part << std::endl;
+}
+
+int test_main() {
+    std::vector<int> vec1 = {0,0,0,1,0};
+    std::vector<int> vec2 = {0,0,0,1,0};
+    __uint128_t vec1_hash = MurmurHash128A((void*)vec1.data(),
+											(((vec1.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											2038074751);
+    __uint128_t vec2_hash = MurmurHash128A((void*)vec2.data(),
+											(((vec2.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											2038074751);
+    hash128DebugHelper(vec1_hash);
+    hash128DebugHelper(vec2_hash);
+	vec1_hash = MurmurHash128A((void*)vec1.data(),
+											(((vec1.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											2038074751);
+	vec2_hash = MurmurHash128A((void*)vec2.data(),
+											(((vec2.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											2038074751);
+	hash128DebugHelper(vec1_hash);
+    hash128DebugHelper(vec2_hash);								
+    return 0;
+}
+
+/*
  * ===  FUNCTION  =============================================================
  *         Name:  main
  *  Description:  
@@ -68,6 +108,8 @@ build_main ( BuildOpts& opt )
     	console->error("Input file {} does not exist or could not be opened.", opt.inlist);
     	std::exit(1);
   	}
+
+	test_main();
 
   	/** try and create the output directory
    	*  and write a file to it.  Complain to the user

@@ -44,3 +44,10 @@ include(GNUInstallDirs)
 
 add_subdirectory(src)
 
+add_subdirectory(test)
+include_directories("include;/home/jie/library/sdsl-lite/sdsl_install_dir/include;/home/jie/library/sdsl-lite/sdsl_install_dir/lib")
+link_directories("/home/jie/library/sdsl-lite/sdsl_install_dir/include;/home/jie/library/sdsl-lite/sdsl_install_dir/lib")
+
+add_executable(test_hash test/test_hash.cc src/gqf/hashutil.c)
+
+target_link_libraries(test_hash sdsl Threads::Threads)
