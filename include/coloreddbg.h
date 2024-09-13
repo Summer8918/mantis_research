@@ -34,7 +34,7 @@
 #define MANTIS_DBG_IN_MEMORY (0x01)
 #define MANTIS_DBG_ON_DISK (0x02)
 
-typedef std::vector<uint64_t> CountVector;
+typedef std::vector<int> CountVector;
 
 typedef sdsl::bit_vector BitVector;
 typedef sdsl::rrr_vector<63> BitVectorRRR;
@@ -254,7 +254,7 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer2(const typename key_obj::kmer_t& key,
 	// (((vector.size() * 32 + 63) >> 6) << 6) / 8 is to make it align with 64 bits
 	__uint128_t vec_hash = MurmurHash128A((void*)vector.data(),
 											//(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
-											(((vector.size() * 64 + 63) >> 6) << 6) / 8, 2038074743,
+											(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
 											2038074751);
 	auto it = eqclass_map.find(vec_hash);
 
@@ -264,12 +264,12 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer2(const typename key_obj::kmer_t& key,
 	// Else create a new eq class.
 	if (it == eqclass_map.end()) {
 		// Extracting the lower and higher 64 bits
-    	uint64_t lower_part = (uint64_t)vec_hash;  // Lower 64 bits
-    	uint64_t higher_part = (uint64_t)(vec_hash >> 64);  // Higher 64 bits
+    	//uint64_t lower_part = (uint64_t)vec_hash;  // Lower 64 bits
+    	//uint64_t higher_part = (uint64_t)(vec_hash >> 64);  // Higher 64 bits
 
     	// Printing the two parts
-    	std::cout << "vec_hash (lower 64 bits): " << lower_part << std::endl;
-    	std::cout << "vec_hash (higher 64 bits): " << higher_part << std::endl;
+    	//std::cout << "vec_hash (lower 64 bits): " << lower_part << std::endl;
+    	//std::cout << "vec_hash (higher 64 bits): " << higher_part << std::endl;
 		eq_id = get_next_available_id();
 		eqclass_map.emplace(std::piecewise_construct,
 												std::forward_as_tuple(vec_hash),
@@ -620,7 +620,8 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 
 	while (!minheap.empty()) {
 		// BitVector eq_class(num_samples);
-		CountVector eq_class2(num_samples);
+		// fix bug: make the size of eq_class2 to be even
+		CountVector eq_class2((num_samples + 1) / 2 * 2, 0);
 
 		KeyObject::kmer_t last_key;
 		do {
