@@ -35,7 +35,7 @@ set(MANTIS_CXX_FLAGS "${ARCH_DEFS};${MANTIS_CXX_WARN}")
 
 if (SDSL_INSTALL_PATH)
    message("Adding ${SDSL_INSTALL_PATH}/include to the include path")
-   message("Adding ${SDSL_INSTALL_PATH}/build/lib to the build path")
+   message("Adding ${SDSL_INSTALL_PATH}/lib to the build path")
    list(APPEND MANTIS_CXX_FLAGS "-I${SDSL_INSTALL_PATH}/include")
    list(APPEND MANTIS_CXX_FLAGS "-L${SDSL_INSTALL_PATH}/lib")
 endif()
@@ -43,11 +43,4 @@ endif()
 include(GNUInstallDirs)
 
 add_subdirectory(src)
-
 add_subdirectory(test)
-include_directories("include;/home/jie/library/sdsl-lite/sdsl_install_dir/include;/home/jie/library/sdsl-lite/sdsl_install_dir/lib")
-link_directories("/home/jie/library/sdsl-lite/sdsl_install_dir/include;/home/jie/library/sdsl-lite/sdsl_install_dir/lib")
-
-add_executable(test_hash test/test_hash.cc src/gqf/hashutil.c)
-
-target_link_libraries(test_hash sdsl Threads::Threads)
