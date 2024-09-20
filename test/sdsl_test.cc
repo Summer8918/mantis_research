@@ -36,10 +36,10 @@ void test_int_vector() {
     //sdsl::remove(tmp_file);
 }
 
-
 void test_int_vector_with_compression() {
     int_vector<> v(10*(1<<20), 0);
     v[0] = 1ULL<<63;
+    v[9 * (1<<20)] = 0xffffff;
     //util::bit_compress(v);
     std::string  tmp_file = "compressed_iv_tmp_file.sdsl";
     cout << "Uncompressed size in MB: " << size_in_mega_bytes(v) << endl;
@@ -47,6 +47,11 @@ void test_int_vector_with_compression() {
     cout << "Compressed size in MB: " << size_in_mega_bytes(vv) << endl;
 	cout << "Percentage: " << size_in_mega_bytes(vv) / size_in_mega_bytes(v) * 100 << endl;
     store_to_file(vv, tmp_file);
+    vlc_vector<coder::fibonacci> vv2;
+    load_from_file(vv2, tmp_file);
+    assert(vv2[0] == 1ULL<<63);
+    assert(vv2[9 * (1<<20)] == 0xffffff);
+    cout << vv2[0] << " " << vv2[9 * (1<<20)] << endl;
 }
 
 int main()
