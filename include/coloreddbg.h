@@ -505,7 +505,7 @@ void ColoredDbg<qf_obj, key_obj>::bv_buffer_serialize() {
 
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::iv_buffer_serialize() {
-	std::string iv_file(prefix + std::to_string(num_serializations) + "_iv" +
+	std::string iv_file(prefix + std::to_string(num_serializations) + "_" +
 											mantis::EQCLASS_FILE);
     std::ofstream outFile(iv_file, std::ios::binary);
     if (outFile) {
@@ -628,8 +628,10 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 		// 	}
 		// 	bucket_offset += len;
 		// }
+		std::cout << "1: bucket_idx:" << bucket_idx << " bucket_offset:" << bucket_offset << std::endl;
 		for (uint32_t i = 0; i < num_samples; i++) {
-			if (eqclasses[bucket_idx][bucket_offset+i]) {
+			std::cout << "i:" << i << std::endl;
+			if (eqclasses[bucket_idx][bucket_offset + i] > 0) {
 				sample_map[i] += count;
 				std::cout << "eqclass_id:" << eqclass_id << "sample:" << i << std::endl;
 			}
@@ -684,8 +686,10 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const std::unordered_map<mantis::KmerHa
 		// 	}
 		// 	bucket_offset += len;
 		// }
+		std::cout << "1 bucket_idx:" << bucket_idx << " bucket_offset:" << bucket_offset << std::endl;
 		for (uint32_t i = 0; i < num_samples; i++) {
-			if (eqclasses[bucket_idx][bucket_offset+i]) {
+			if (eqclasses[bucket_idx][bucket_offset+i] > 0) {
+				std::cout << " i:" << i << std::endl;
 				vec.push_back(i);
 				std::cout << "eqclass_id:" << eqclass_id << "sample:" << i << std::endl;
 			}
