@@ -37,8 +37,8 @@ void test_int_vector() {
 }
 
 void test_int_vector_with_compression() {
-    int_vector<> v(10*(1<<20), 0);
-    v[0] = 1ULL<<63;
+    int_vector<32> v(10*(1<<20), 0);
+    v[0] = 1ULL<<31;
     v[9 * (1<<20)] = 0xffffff;
     //util::bit_compress(v);
     std::string  tmp_file = "compressed_iv_tmp_file.sdsl";
@@ -52,6 +52,9 @@ void test_int_vector_with_compression() {
     assert(vv2[0] == 1ULL<<63);
     assert(vv2[9 * (1<<20)] == 0xffffff);
     cout << vv2[0] << " " << vv2[9 * (1<<20)] << endl;
+    cout << "int vector.capacity()" << v.capacity() << endl;
+    cout << "int vector.max_size()" << v.max_size() << endl;
+    cout << "int vector.bit_size()" << v.bit_size() << endl;
 }
 
 int main()

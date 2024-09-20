@@ -19,6 +19,7 @@ namespace mantis{
 
     constexpr const uint64_t NUM_BV_BUFFER{20000000};
     constexpr const uint64_t NUM_CV_BUFFER{20000000};
+    constexpr const uint64_t NUM_IV_BUFFER{20000000};
     constexpr const uint64_t INITIAL_EQ_CLASSES{10000};
     constexpr const uint64_t SAMPLE_SIZE{(1ULL << 26)};
 } // namespace mantis
