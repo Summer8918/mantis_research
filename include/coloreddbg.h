@@ -270,11 +270,11 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key,
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::add_intvector(const std::vector<int> & vector, uint64_t eq_id) {
 	uint64_t start_idx = (eq_id % mantis::NUM_IV_BUFFER) * num_samples;
-	console->info("vector size:{}, num_samples:{}", vector.size(), num_samples);
-	console->info("eq_id:{}", eq_id);
+	//console->info("vector size:{}, num_samples:{}", vector.size(), num_samples);
+	//console->info("eq_id:{}", eq_id);
 	for (uint32_t i = 0; i < num_samples; i++) {
 		iv_buffer[start_idx + i] = vector[i];
-		console->info("vector i:{}, val: {} ", i, vector[i]);
+		//console->info("vector i:{}, val: {} ", i, vector[i]);
 	}
 }
 
@@ -292,7 +292,11 @@ void ColoredDbg<qf_obj, key_obj>::iv_buffer_serialize() {
     } else {
 		console->error("Error opening file when serializing cv buffer!");
     }
-	iv_buffer = IntVector(iv_buffer.bit_size() / INT_VECTOR_BIT_NUM, 0);
+	if (INT_VECTOR_BIT_NUM == 0) {
+		iv_buffer = IntVector(iv_buffer.bit_size(), 0);
+	} else {
+		iv_buffer = IntVector(iv_buffer.bit_size() / INT_VECTOR_BIT_NUM, 0);
+	}
 	num_serializations++;
 }
 
