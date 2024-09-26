@@ -417,6 +417,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 	struct Iterator {
 		QFi qfi;
 		typename key_obj::kmer_t kmer;
+		uint64_t count;
 		uint32_t id;
 		bool do_madvice{false};
 		Iterator(uint32_t id, const QF* cqf, bool flag): id(id), do_madvice(flag)
@@ -443,6 +444,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 			return key() > rhs.key();
 		}
 		const typename key_obj::kmer_t& key() const { return kmer; }
+		uint64_t get_count() const {return count;}
 		private:
 		void get_key() {
 			uint64_t value, count;
@@ -488,7 +490,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 			Iterator& cur = minheap.top();
 			last_key = cur.key();
 			// console->info("cur.id {}", cur.id); is 0 and 1
-			eq_class2[cur.id] = 1;
+			eq_class2[cur.id] += cur.get_count();
 			if (cur.next()) {
 				minheap.replace_top(cur);
 			}
