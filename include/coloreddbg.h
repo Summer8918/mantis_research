@@ -344,7 +344,8 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 	}
 
 	std::vector<uint64_t> sample_map(num_samples, 0);
-
+	std::vector<std::unordered_map<uint64_t, uint64_t>> sample_kmers_eqid_count(num_samples);
+	
 	for (auto it = query_eqclass_map.begin(); it != query_eqclass_map.end();
 			 ++it) {
 		auto eqclass_id = it->first;
@@ -361,9 +362,21 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 			if (eqclasses[bucket_idx][bucket_offset + i] > 0) {
 				sample_map[i] += count;
 				std::cout << "eqclass_id:" << eqclass_id << "sample:" << i << std::endl;
+				// store the occurence of each eqclass_id of k-mers for each sample file.
+				sample_kmers_eqid_count[i][eqclass_id] += eqclasses[bucket_idx][bucket_offset + i];
 			}
 		}
 		std::cout << "For k-mer end" << std::endl;
+	}
+	
+	std::ofstream opfile("query_sample_file_kmer_eq_id_occurrence_count_res.txt");
+	for (int i = 0; i < sample_map.size(); i++) {
+		if (sample_map[i] > 0) {
+			opfile << "Occurence of eqid in file:" <<get_sample(i) << '\n';
+			for (auto it = sample_kmers_eqid_count[i].begin(); it != sample_kmers_eqid_count[i].end(); it++) {
+				opfile << "eq_id:" << it->first << " count:" << it->second << '\n';
+			}
+		}
 	}
 	return sample_map;
 }

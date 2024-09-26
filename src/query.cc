@@ -78,8 +78,9 @@ void output_results(mantis::QuerySets& multi_kmers,
             opfile << cnt++ << '\t' << kmers.size() << '\n';
             mantis::QueryResult result = cdbg.find_samples(kmers);
             for (auto i = 0; i < result.size(); ++i) {
-                if (result[i] > 0)
+                if (result[i] > 0) {
                     opfile << cdbg.get_sample(i) << '\t' << result[i] << '\n';
+                }
             }
             //++qctr;
         }
@@ -131,6 +132,7 @@ void output_results_json(mantis::QuerySets& multi_kmers,
               //std::sort(kmers.begin(), kmers.end());
               opfile << "{ \"qnum\": " << cnt++ << ",  \"num_kmers\": " << kmers.size() << ", \"res\": {\n";
               mantis::QueryResult result = cdbg.find_samples(kmers);
+
               uint64_t sampleCntr = 0;
               for (auto it = result.begin(); it != result.end(); ++it) {
                   if (*it > 0)
