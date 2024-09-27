@@ -37,7 +37,7 @@
 
 #define MANTIS_DBG_IN_MEMORY (0x01)
 #define MANTIS_DBG_ON_DISK (0x02)
-#define INT_VECTOR_BIT_NUM (0x20)
+#define INT_VECTOR_BIT_NUM (0x40)
 
 typedef sdsl::int_vector<INT_VECTOR_BIT_NUM> IntVector;
 typedef sdsl::vlc_vector<sdsl::coder::fibonacci> CompressedIntVector;
@@ -96,9 +96,9 @@ class ColoredDbg {
 		// returns true if adding this k-mer increased the number of equivalence
 		// classes
 		// and false otherwise.
-		bool add_kmer3(const typename key_obj::kmer_t& hash, const std::vector<int>&
+		bool add_kmer3(const typename key_obj::kmer_t& hash, const std::vector<uint64_t>&
 									vector);
-		void add_intvector(const std::vector<int> & vector, uint64_t eq_id);
+		void add_intvector(const std::vector<uint64_t> & vector, uint64_t eq_id);
 		uint64_t get_next_available_id(void);
 		void cv_buffer_serialize();
 		void iv_buffer_serialize();
@@ -219,7 +219,7 @@ void ColoredDbg<qf_obj, key_obj>::reinit(cdbg_bv_map_t<__uint128_t,
 }
 
 template <class qf_obj, class key_obj>
-bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key, const std::vector<int>&
+bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key, const std::vector<uint64_t>&
 									vector) {
     // A kmer (hash) is seen only once during the merge process.
 	// So we insert every kmer in the dbg
@@ -268,13 +268,15 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key,
 }
 
 template <class qf_obj, class key_obj>
-void ColoredDbg<qf_obj, key_obj>::add_intvector(const std::vector<int> & vector, uint64_t eq_id) {
+void ColoredDbg<qf_obj, key_obj>::add_intvector(const std::vector<uint64_t> & vector, uint64_t eq_id) {
 	uint64_t start_idx = (eq_id % mantis::NUM_IV_BUFFER) * num_samples;
 	//console->info("vector size:{}, num_samples:{}", vector.size(), num_samples);
 	//console->info("eq_id:{}", eq_id);
 	for (uint32_t i = 0; i < num_samples; i++) {
-		iv_buffer[start_idx + i] = vector[i];
-		//console->info("vector i:{}, val: {} ", i, vector[i]);
+		iv_buffer[start_idx + i] += vector[i];
+		// if (vector[i] != 0) {
+		// 	console->info("vector i:{}, val: {} ", i, vector[i]);
+		// }
 	}
 }
 
@@ -358,10 +360,11 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 		std::cout << "For k-mer start" << std::endl;
 		std::cout << "1: bucket_idx:" << bucket_idx << " bucket_offset:" << bucket_offset << std::endl;
 		for (uint32_t i = 0; i < num_samples; i++) {
-			std::cout << "i:" << i << std::endl;
+			//std::cout << "i:" << i << std::endl;
 			if (eqclasses[bucket_idx][bucket_offset + i] > 0) {
 				sample_map[i] += count;
 				std::cout << "eqclass_id:" << eqclass_id << "sample:" << i << std::endl;
+				std::cout << "Occurrence:" << eqclasses[bucket_idx][bucket_offset + i] << std::endl;
 				// store the occurence of each eqclass_id of k-mers for each sample file.
 				sample_kmers_eqid_count[i][eqclass_id] += eqclasses[bucket_idx][bucket_offset + i];
 			}
@@ -496,7 +499,8 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 	while (!minheap.empty()) {
 		// BitVector eq_class(num_samples);
 		// fix bug: make the size of eq_class2 to be even
-		std::vector<int> eq_class2((num_samples + 1) / 2 * 2, 0);
+		//std::vector<int> eq_class2((num_samples + 1) / 2 * 2, 0);
+		std::vector<uint64_t> eq_class2(num_samples, 0);
 
 		KeyObject::kmer_t last_key;
 		do {
