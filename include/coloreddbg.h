@@ -336,6 +336,7 @@ std::vector<uint64_t>
 ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 	// Find a list of eq classes and the number of kmers that belong those eq
 	// classes.
+	// find the eq id of kmers.
 	std::unordered_map<uint64_t, uint64_t> query_eqclass_map;
 	for (auto k : kmers) {
 		key_obj key(k, 0, 0);
@@ -347,7 +348,7 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 
 	std::vector<uint64_t> sample_map(num_samples, 0);
 	std::vector<std::unordered_map<uint64_t, uint64_t>> sample_kmers_eqid_count(num_samples);
-	
+
 	for (auto it = query_eqclass_map.begin(); it != query_eqclass_map.end();
 			 ++it) {
 		auto eqclass_id = it->first;
@@ -463,7 +464,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 		uint64_t get_count() const {return count;}
 		private:
 		void get_key() {
-			uint64_t value, count;
+			uint64_t value;
 			qfi_get_hash(&qfi, &kmer, &value, &count);
 		}
 	};
