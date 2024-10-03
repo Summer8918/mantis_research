@@ -224,11 +224,8 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key,
     // A kmer (hash) is seen only once during the merge process.
 	// So we insert every kmer in the dbg
 	uint64_t eq_id;
-	//console->info("vector.size() {}", vector.size());
-	// (((vector.size() * 32 + 63) >> 6) << 6) / 8 is to make it align with 64 bits
 	__uint128_t vec_hash = MurmurHash128A((void*)vector.data(),
-											//(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
-											(((vector.size() * 32 + 63) >> 6) << 6) / 8, 2038074743,
+											vector.size() / 8, 2038074743,
 											2038074751);
 	auto it = eqclass_map.find(vec_hash);
 
