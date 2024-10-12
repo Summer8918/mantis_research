@@ -225,7 +225,7 @@ bool ColoredDbg<qf_obj, key_obj>::add_kmer3(const typename key_obj::kmer_t& key,
 	// So we insert every kmer in the dbg
 	uint64_t eq_id;
 	__uint128_t vec_hash = MurmurHash128A((void*)vector.data(),
-											vector.size() / 8, 2038074743,
+											vector.size() * 8, 2038074743,
 											2038074751);
 	auto it = eqclass_map.find(vec_hash);
 
