@@ -87,6 +87,8 @@ class ColoredDbg {
         std::unordered_map<uint64_t, std::vector<uint64_t>>
             find_samples(const std::unordered_map<mantis::KmerHash, uint64_t> &uniqueKmers);
 
+		void find_samples2(const mantis::QuerySet& kmers, std::unordered_map<uint64_t, uint64_t> &sample_kmers_count);
+
 		void serialize();
 		
 		void reinit(default_cdbg_bv_map_t& map);
@@ -380,6 +382,43 @@ ColoredDbg<qf_obj,key_obj>::find_samples(const mantis::QuerySet& kmers) {
 		}
 	}
 	return sample_map;
+}
+
+/*
+std::vector<std::unordered_map<uint64_t, uint64_t>> sample_kmers_eqid_count
+The index for vector is the sample number;
+key-value in std::unordered_map<uint64_t, uint64_t>: the key is eq_id, value is the occurrence of the eq_id in the sample file.
+*/
+template <class qf_obj, class key_obj>
+void
+ColoredDbg<qf_obj,key_obj>::find_samples2(const mantis::QuerySet& kmers, std::unordered_map<uint64_t, uint64_t> &sample_kmers_count) {
+	// Find a list of eq classes and the number of kmers that belong those eq
+	// classes.
+	// find the eq id of kmers.
+	std::unordered_map<uint64_t, uint64_t> query_eqclass_map;
+	for (auto k : kmers) {
+		key_obj key(k, 0, 0);
+		uint64_t eqclass = dbg.query(key, 0);
+		if (eqclass) {
+			query_eqclass_map[eqclass] += 1;
+		}
+	}
+
+	for (auto it = query_eqclass_map.begin(); it != query_eqclass_map.end(); ++it) {
+		auto eqclass_id = it->first;
+		auto count = it->second;
+		// counter starts from 1.
+		uint64_t start_idx = (eqclass_id - 1);
+		uint64_t bucket_idx = start_idx / mantis::NUM_IV_BUFFER;
+		uint64_t bucket_offset = (start_idx % mantis::NUM_IV_BUFFER) * num_samples;
+		for (uint32_t i = 0; i < num_samples; i++) {
+			if (eqclasses[bucket_idx][bucket_offset + i] > 0) {
+				std::cout << "count:" << count << std::endl;
+				// store the occurence of each eqclass_id of k-mers for each sample file.
+				sample_kmers_count[i] += count * eqclasses[bucket_idx][bucket_offset + i];
+			}
+		}
+	}
 }
 
 template <class qf_obj, class key_obj>

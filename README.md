@@ -213,6 +213,28 @@ OPTIONS
  
 The output file contains the list of experiments (i.e., hits) corresponding to each queried transcript.
 
+Validating
+----------
+
+Validate the EQ-ID class map by checking the k-mer occurrences across sample files and the Mantis index.
+
+For each k-mer in the k-mer query set:
+Identify how many times the k-mer appears in each sample file.
+Record the k-mer occurrences per sample.
+Query the k-mer in the Mantis index to retrieve its recorded occurrences.
+
+Compare the occurrences of kmers between the sample files and the Mantis index.
+
+If the counts don't match, report an error.
+
+Valdiating command template:
+```mantis validate -i <input_list> -p <dbg_prefix> <query>```
+
+Valding command example:
+```
+./bin/mantis validate -i raw/incqfs2.lst -p raw/ raw/input_txns.fa
+```
+
 Contributing
 ------------
 Contributions via GitHub pull requests are welcome.

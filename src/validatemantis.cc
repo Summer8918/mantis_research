@@ -130,12 +130,12 @@ validate_main ( ValidateOpts& opt )
 	std::string dbg_file(prefix + mantis::CQF_FILE);
 	std::string sample_file(prefix + mantis::SAMPLEID_FILE);
 	std::vector<std::string> eqclass_files = mantis::fs::GetFilesExt(prefix.c_str(),
-																																	 mantis::EQCLASS_FILE);
+																	mantis::EQCLASS_FILE);
 
 	ColoredDbg<SampleObject<CQF<KeyObject>*>, KeyObject> cdbg(dbg_file,
-																														eqclass_files,
-																														sample_file,
-																														MANTIS_DBG_IN_MEMORY);
+															eqclass_files,
+															sample_file,
+															MANTIS_DBG_IN_MEMORY);
 
 	console->info("Read colored dbg with {} k-mers and {} color classes",
 								cdbg.get_cqf()->dist_elts(), cdbg.get_num_bitvectors());
@@ -145,10 +145,10 @@ validate_main ( ValidateOpts& opt )
 	uint64_t total_kmers = 0;
 	std::unordered_map<mantis::KmerHash, uint64_t> _dummy_uniqueKmers;
 	mantis::QuerySets multi_kmers = Kmer::parse_kmers(query_file.c_str(),
-																										kmer_size,
-																										total_kmers,
-																										false,
-																										_dummy_uniqueKmers);
+														kmer_size,
+														total_kmers,
+														false,
+														_dummy_uniqueKmers);
 	console->info("Total k-mers to query: {}", total_kmers);
 
 	// Query kmers in each experiment CQF
@@ -170,20 +170,67 @@ validate_main ( ValidateOpts& opt )
 		std::vector<uint64_t> result = cdbg.find_samples(kmers);
 
 		// Validate the cdbg output
-		for (uint64_t i = 0; i < nqf; i++)
+		for (uint64_t i = 0; i < nqf; i++) {
 			if (fraction_present[i] != result[i]) {
 				console->info("Failed for sample: {} original CQF {} cdbg {}",
 											inobjects[i].sample_id, fraction_present[i], result[i]);
 				fail = true;
 				//abort();
 			}
+		}
 		ground_truth.push_back(fraction_present);
 		cdbg_output.push_back(result);
 	}
-	if (fail)
-		console->info("Mantis validation failed!");
-	else
-		console->info("Mantis validation passed!");
+	if (fail) {
+		console->info("Mantis validation 1 failed!");
+	}
+	else {
+		console->info("Mantis validation 1 passed!");
+	}
+
+	fail = false;
+	for (auto kmers : multi_kmers) {
+		std::unordered_map<uint64_t, uint64_t> dbg_kmer_count;
+		for (uint64_t i = 0; i < nqf; i++) {
+			for (auto kmer : kmers) {
+				KeyObject k(kmer, 0, 0);
+				uint64_t count = cqfs[i].query(k, 0);
+				if (count > 0) {
+					dbg_kmer_count[inobjects[i].id] += count;
+					if (inobjects[i].id == 4) {
+						cout << "inobjects[i].id: count" << count << endl;
+					} else if (inobjects[i].id == 1) {
+						cout << "inobjects[i].id 1: count" << count << endl;
+					} else if (inobjects[i].id == 0) {
+						cout << "inobjects[i].id 0: count" << count << endl;
+					}
+				}
+			}
+		}
+
+		std::unordered_map<uint64_t, uint64_t> cdbg_output;
+		cdbg.find_samples2(kmers, cdbg_output);
+		// Validate the cdbg output
+		for (uint64_t i = 0; i < nqf; i++) {
+			if (dbg_kmer_count[i] != cdbg_output[i]) {
+				console->info("Failed for sample: {} original CQF {} cdbg {}",
+											inobjects[i].sample_id, dbg_kmer_count[i], cdbg_output[i]);
+				fail = true;
+				//abort();
+			} else {
+				console->info("Success for sample: {} original CQF {} cdbg {}",
+											inobjects[i].sample_id, dbg_kmer_count[i], cdbg_output[i]);
+			}
+		}
+
+		if (fail) {
+		    console->info("Mantis validation 2 failed!");
+		}
+		else {
+		    console->info("Mantis validation 2 passed!");
+		}
+	}
+
 
 #if 0
 	// This is x-axis
