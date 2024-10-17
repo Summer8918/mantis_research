@@ -190,37 +190,25 @@ validate_main ( ValidateOpts& opt )
 
 	fail = false;
 	for (auto kmers : multi_kmers) {
-		std::unordered_map<uint64_t, uint64_t> dbg_kmer_count;
-		for (uint64_t i = 0; i < nqf; i++) {
-			for (auto kmer : kmers) {
-				KeyObject k(kmer, 0, 0);
+		for (auto kmer : kmers) {
+			mantis::QuerySet tmpKmerSet;
+			tmpKmerSet.insert(kmer);
+
+			std::vector<uint64_t> cdbg_output = cdbg.find_samples2(tmpKmerSet);
+
+			KeyObject k(kmer, 0, 0);
+			for (uint64_t i = 0; i < nqf; i++) {
 				uint64_t count = cqfs[i].query(k, 0);
-				if (count > 0) {
-					dbg_kmer_count[inobjects[i].id] += count;
-					if (inobjects[i].id == 4) {
-						cout << "inobjects[i].id: count" << count << endl;
-					} else if (inobjects[i].id == 1) {
-						cout << "inobjects[i].id 1: count" << count << endl;
-					} else if (inobjects[i].id == 0) {
-						cout << "inobjects[i].id 0: count" << count << endl;
-					}
+				if (cdbg_output[i] != count) {
+					fail = true;
+					console->info("Failed for kemer {} in sample: {} original CQF {} cdbg {}",
+											kmer, inobjects[i].sample_id, count, cdbg_output[i]);
+				} else if (count > 0){
+					console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
+											kmer, inobjects[i].sample_id, count, cdbg_output[i]);
 				}
 			}
-		}
 
-		std::unordered_map<uint64_t, uint64_t> cdbg_output;
-		cdbg.find_samples2(kmers, cdbg_output);
-		// Validate the cdbg output
-		for (uint64_t i = 0; i < nqf; i++) {
-			if (dbg_kmer_count[i] != cdbg_output[i]) {
-				console->info("Failed for sample: {} original CQF {} cdbg {}",
-											inobjects[i].sample_id, dbg_kmer_count[i], cdbg_output[i]);
-				fail = true;
-				//abort();
-			} else {
-				console->info("Success for sample: {} original CQF {} cdbg {}",
-											inobjects[i].sample_id, dbg_kmer_count[i], cdbg_output[i]);
-			}
 		}
 
 		if (fail) {

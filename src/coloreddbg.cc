@@ -43,6 +43,7 @@
 #include "json.hpp"
 #include "mantis_utils.hpp"
 #include "mantisconfig.hpp"
+#include "kmer.h"
 
 /*
  * ===  FUNCTION  =============================================================
@@ -116,6 +117,7 @@ build_main ( BuildOpts& opt )
 	uint32_t nqf = 0;
 	uint32_t kmer_size{0};
 	console->info("Reading input Squeakr files.");
+	
 	while (infile >> squeakr_file) {
 		if (!mantis::fs::FileExists(squeakr_file.c_str())) {
 			console->error("Squeakr file {} does not exist.", squeakr_file);
@@ -161,12 +163,25 @@ build_main ( BuildOpts& opt )
     	nqf++;
 	}
 
+	// std::string query_file = "raw/input_txns.fa";
+	// console->info("Reading query kmers from disk.");
+	// uint64_t total_kmers = 0;
+	// std::unordered_map<mantis::KmerHash, uint64_t> _dummy_uniqueKmers;
+	// mantis::QuerySets multi_kmers_tmp;
+	// multi_kmers_tmp = Kmer::parse_kmers(query_file.c_str(),
+	// 													kmer_size,
+	// 													total_kmers,
+	// 													false,
+	// 													_dummy_uniqueKmers);
+	// console->info("Total k-mers to query: {}", total_kmers);
+
 	ColoredDbg<SampleObject<CQF<KeyObject>*>, KeyObject> cdbg(opt.qbits,
 															inobjects[0].obj->keybits(),
 															cqfs[0].hash_mode(),
 															inobjects[0].obj->seed(),
 															prefix, nqf, MANTIS_DBG_ON_DISK);
 	cdbg.set_console(console);
+	// cdbg.set_multi_kmers_tmp(multi_kmers_tmp);
 	if (opt.flush_eqclass_dist) {
 		cdbg.set_flush_eqclass_dist();
   	}
