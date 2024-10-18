@@ -203,10 +203,13 @@ validate_main ( ValidateOpts& opt )
 					fail = true;
 					console->info("Failed for kemer {} in sample: {} original CQF {} cdbg {}",
 											kmer, inobjects[i].sample_id, count, cdbg_output[i]);
-				} else if (count > 0){
-					console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
-											kmer, inobjects[i].sample_id, count, cdbg_output[i]);
-				}
+					uint64_t eq_id = cdbg.getEqclassid(kmer);
+					console->info("The eqid of the kmer is {}", eq_id);
+				} 
+				// else if (count > 0){
+				// 	console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
+				// 							kmer, inobjects[i].sample_id, count, cdbg_output[i]);
+				// }
 			}
 
 		}
