@@ -76,11 +76,15 @@ void output_results(mantis::QuerySets& multi_kmers,
         for (auto &kmers : multi_kmers) {
             //std::sort(kmers.begin(), kmers.end());
             opfile << cnt++ << '\t' << kmers.size() << '\n';
-            mantis::QueryResult result = cdbg.find_samples(kmers);
-            for (auto i = 0; i < result.size(); ++i) {
-                if (result[i] > 0) {
-                    opfile << cdbg.get_sample(i) << '\t' << result[i] << '\n';
+            //mantis::QueryResult result = cdbg.find_samples(kmers);
+            mantis::QueryResult2 res = cdbg.find_samples3(kmers);
+            for (auto &kmer : kmers) {
+              if (res.find(kmer) != res.end()) {
+                opfile << "kmer:" << kmer << "\n";
+                for (auto i = 0; i < res[kmer].size(); ++i) {
+                  opfile << cdbg.get_sample(i) << '\t' << res[kmer][i] << '\n';
                 }
+              }
             }
             //++qctr;
         }

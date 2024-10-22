@@ -22,6 +22,7 @@ namespace mantis {
 
   using QueryResult = std::vector<uint64_t>;//std::unordered_map<uint64_t, uint64_t>;
   using QueryResults = std::vector<QueryResult>;
+  using QueryResult2 = std::unordered_map<uint64_t, std::vector<uint64_t>>;
 }
 
 #endif //__MANTIS_COMMON_TYPES__
