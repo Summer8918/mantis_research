@@ -42,6 +42,56 @@
 
 #include	<stdlib.h>
 
+
+bool get_cdbg_query_res(std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> &query_res, 
+				std::string mantis_index_dir, const mantis::QuerySet & kmers) {
+    if (mantis_index_dir.back() != '/') {
+		mantis_index_dir += '/';
+	}
+
+	// make the output directory if it doesn't exist
+	if (!mantis::fs::DirExists(mantis_index_dir.c_str())) {
+		std::cout << "Error: mantis directory " <<  mantis_index_dir << " not exist." << std::endl;
+		return false;
+	}
+
+	// Read the colored dBG
+	std::cout << "Reading colored dbg from disk." << std::endl;
+	std::string dbg_file(mantis_index_dir + mantis::CQF_FILE);
+	std::string sample_file(mantis_index_dir + mantis::SAMPLEID_FILE);
+	std::vector<std::string> eqclass_files = mantis::fs::GetFilesExt(mantis_index_dir.c_str(),
+																	mantis::EQCLASS_FILE);
+
+	ColoredDbg<SampleObject<CQF<KeyObject>*>, KeyObject> cdbg(dbg_file,
+															eqclass_files,
+															sample_file,
+															MANTIS_DBG_IN_MEMORY);
+
+	std::cout << "Read colored dbg with" << cdbg.get_cqf()->dist_elts() << " k-mers and" 
+				<< cdbg.get_num_bitvectors() << "color classes" << std::endl;
+	
+	query_res = cdbg.find_samples3(kmers);
+	return true;
+}
+
+bool test_get_cdbg_query_res(const mantis::QuerySet & kmers, std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> res1) {
+	std::string mantis_index_dir = "/home/jie/code_base/mantis_research/raw_approx";
+	std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> test_q;
+	get_cdbg_query_res(test_q, mantis_index_dir, kmers);
+
+	// The size of two result should be same
+	assert(test_q.size() == res1.size());
+	for (auto it1 = res1.begin(); it1 != res1.end(); it1++) {
+		auto it2 = test_q.find(it1->first);
+		assert(it2 != test_q.end() && it2->second.size() == it1->second.size());
+		for (int i = 0; i < it1->second.size(); i++) {
+			assert(it1->second[i] == it2->second[i]);
+		}
+	}
+	std::cout << "Compare res1 and test_q is same" << std::endl;
+	return true;
+}
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -188,39 +238,6 @@ validate_main ( ValidateOpts& opt )
 		console->info("Mantis validation 1 passed!");
 	}
 
-	fail = false;
-	for (auto kmers : multi_kmers) {
-		for (auto kmer : kmers) {
-			mantis::QuerySet tmpKmerSet;
-			tmpKmerSet.insert(kmer);
-
-			std::vector<uint64_t> cdbg_output = cdbg.find_samples2(tmpKmerSet);
-
-			KeyObject k(kmer, 0, 0);
-			for (uint64_t i = 0; i < nqf; i++) {
-				uint64_t count = cqfs[i].query(k, 0);
-				if (cdbg_output[i] != count) {
-					fail = true;
-					console->info("Failed for kemer {} in sample: {} original CQF {} cdbg {}",
-											kmer, inobjects[i].sample_id, count, cdbg_output[i]);
-					uint64_t eq_id = cdbg.getEqclassid(kmer);
-					console->info("The eqid of the kmer is {}", eq_id);
-				} 
-				// else if (count > 0){
-				// 	console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
-				// 							kmer, inobjects[i].sample_id, count, cdbg_output[i]);
-				// }
-			}
-
-		}
-
-		if (fail) {
-		    console->info("Mantis validation 2 failed!");
-		}
-		else {
-		    console->info("Mantis validation 2 passed!");
-		}
-	}
 
 	fail = false;
 	
@@ -255,7 +272,7 @@ validate_main ( ValidateOpts& opt )
 			}
 
 		}
-
+		test_get_cdbg_query_res(kmers, cdbg_output);
 		if (fail) {
 		    console->info("Mantis validation 3 failed!");
 		}
