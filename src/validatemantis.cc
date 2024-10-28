@@ -39,8 +39,10 @@
 #include "coloreddbg.h"
 #include "mantisconfig.hpp"
 #include "squeakrconfig.h"
+#include "validateMantisUtils.h"
 
-#include	<stdlib.h>
+
+#include <stdlib.h>
 
 
 bool get_cdbg_query_res(std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> &query_res, 
@@ -90,6 +92,81 @@ bool test_get_cdbg_query_res(const mantis::QuerySet & kmers, std::unordered_map<
 	}
 	std::cout << "Compare res1 and test_q is same" << std::endl;
 	return true;
+}
+
+void compare_exact_and_approx_query_res(const mantis::QuerySet & kmers) {
+	std::string approx_mantis = "/home/jie/code_base/mantis_research/raw_approx";
+	std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> approx_res;
+	get_cdbg_query_res(approx_res, approx_mantis, kmers);
+
+	std::string exact_mantis = "/home/jie/code_base/mantis_research/raw_exact";
+	std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> exact_res;
+	get_cdbg_query_res(exact_res, exact_mantis, kmers);
+
+	// The absolute differences of median, mean and std dev between approx and exact mantis
+	//  for different kmer row (the occurrence of kmer in different samples)
+	
+	std::vector<double> medians, means, stdDevs;
+	int count = 0;
+	for (auto kmer : kmers) {
+		auto it1 = approx_res.find(kmer);
+		auto it2 = exact_res.find(kmer);
+		//std::cout << "kmer " << count << std::endl;
+		count++;
+		if (it1 == approx_res.end() && it2 == exact_res.end()) {
+			//std::cout << "Cann't find kmer" << std::endl;
+		} else if (it1 == approx_res.end() || it2 == exact_res.end()) {
+			std::cout << "Find kmer in one, not exist in another" << std::endl;
+			if (it1 != approx_res.end()) {
+				std::cout << "find in appro res" << std::endl;
+				for (int i = 0; i < it1->second.size(); i++) {
+					if (it1->second[i] != 0) {
+						std::cout << "sample index:" << i << " Occurrence:" << it1->second[i] << std::endl;
+					}
+				}
+			}
+			if (it2 != exact_res.end()) {
+				std::cout << "find in exact res" << std::endl;
+			}
+		} else if(it2->second.size() == it1->second.size()) {
+			std::cout << "Find kmer in exact and approx mantis" << std::endl;
+			double approxMean = calculateMean(it1->second);
+			double exactMean = calculateMean(it2->second);
+			means.push_back(abs(approxMean - exactMean));
+
+			double approxMedian = calculateMedian(it1->second);
+			double exactMedian = calculateMedian(it2->second);
+			medians.push_back((abs(approxMedian - exactMedian)));
+
+			double approxStdDev = calculateStandardDeviation(it1->second, approxMean);
+			double exactStdDev = calculateStandardDeviation(it2->second, exactMean);
+			stdDevs.push_back((abs(approxStdDev - exactStdDev)));
+
+			if (approxMean != exactMean) {
+				std::cout << "approxMean" << approxMean << " exactMean" << exactMean << std::endl;
+			}
+
+			if (approxMedian != exactMedian) {
+				std::cout << "approxMedian" << approxMedian << " exactMedian" << exactMedian << std::endl;
+			}
+
+			if (approxStdDev != exactStdDev) {
+				std::cout << "approxStdDev" << approxStdDev << " exactStdDev" << exactStdDev << std::endl;
+			}
+
+			std::vector<int> approxRanks = getRanks(it1->second);
+			std::vector<int> exactRanks = getRanks(it2->second);
+			assert(approxRanks.size() == exactRanks.size());
+			for (int i = 0; i < approxRanks.size(); ++i) {
+				if (approxRanks[i] != exactRanks[i]) {
+					std::cout << "i:" << i << ": approxRank:" << approxRanks[i] << "exactRanks" 
+							<< exactRanks[i] << std::endl;
+				}
+			}
+		} else {
+			std::cout << "it2->second.size() == it1->second.size()" << std::endl;
+		}
+	}
 }
 
 /* 
@@ -272,7 +349,8 @@ validate_main ( ValidateOpts& opt )
 			}
 
 		}
-		test_get_cdbg_query_res(kmers, cdbg_output);
+		//test_get_cdbg_query_res(kmers, cdbg_output);
+		compare_exact_and_approx_query_res(kmers);
 		if (fail) {
 		    console->info("Mantis validation 3 failed!");
 		}
