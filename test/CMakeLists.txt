@@ -5,6 +5,7 @@ include_directories("../src")
 
 add_executable(test_hash test_hash.cc ../src/gqf/hashutil.c)
 add_executable(sdsl_test sdsl_test.cc)
+add_executable(test_compress test_compress.cc)
 add_executable(validateMantisUtilsTest validateMantisUtilsTest.cc ../src/validateMantisUtils.cc)
 
 target_link_libraries(test_hash sdsl Threads::Threads)
