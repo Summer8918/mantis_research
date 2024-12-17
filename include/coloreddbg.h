@@ -346,7 +346,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 		}
 	}
 
-	std::cout << "Finishes cal manhattan distance for each two row vectors in group" << std::endl;
+	//std::cout << "Finishes cal manhattan distance for each two row vectors in group" << std::endl;
 
 	for (auto it = row_vec_dists.begin(); it != row_vec_dists.end(); it++) {
 		if (it->second <= ROW_DIST_THRESHOLD) {
@@ -472,13 +472,13 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64_t> &prev_eqclassid_to_new) {
-	struct Iterator {
+	struct Iterator2 {
 		QFi qfi;
 		typename key_obj::kmer_t kmer;
 		uint64_t count;
 		uint64_t value;
 		bool do_madvice{false};
-		Iterator(const QF* cqf, bool flag): do_madvice(flag) {
+		Iterator2(const QF* cqf, bool flag): do_madvice(flag) {
 			if (qf_iterator_from_position(cqf, &qfi, 0) != QFI_INVALID) {
 				get_key();
 				if (do_madvice) {
@@ -506,22 +506,30 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 			return qfi_end(&qfi);
 		}
 	};
+	//std::cout << "log2(dbg.numslots();)" << std::endl;
 	uint64_t qbits = log2(dbg.numslots());
+	//std::cout << "dbg.keybits();" << std::endl;
 	uint64_t keybits = dbg.keybits();
+	//std::cout << " dbg.hash_mode();" << std::endl;
 	enum qf_hashmode hashmode = dbg.hash_mode();
+	//std::cout << " dbg.seed();" << std::endl;
 	uint64_t seed = dbg.seed();
-	dbg.delete_file();
-	CQF<key_obj> newCqf(qbits, keybits, hashmode, seed, prefix + mantis::CQF_FILE);
-	Iterator dbg_iter = Iterator(dbg.get_cqf(), true);
-	std::cout << "start to update dbg" << std::endl;
+	//std::cout << "start to create newCqf " << std::endl;
+	CQF<key_obj> newCqf(qbits, keybits, hashmode, seed, prefix + std::to_string(num_serializations) + "_" + mantis::CQF_FILE);
+	//std::cout << "start to create iterator " << std::endl;
+	Iterator2 dbg_iter = Iterator2(dbg.get_cqf(), true);
+	//std::cout << "start to update dbg" << std::endl;
 	uint64_t tmp_cnt = 0;
 	do {
+		//std::cout << "tmp_cnt:" << tmp_cnt << " get key"<< std::endl;
 		typename key_obj::kmer_t key = dbg_iter.key();
+		//std::cout << "get cnt"<< std::endl;
 		uint64_t cnt = dbg_iter.cnt();
+		//std::cout << "get val"<< std::endl;
 		uint64_t val = dbg_iter.val();
+		//std::cout << "insert"<< std::endl;
 		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
 		tmp_cnt++;
-		std::cout << "tmp_cnt:" << tmp_cnt << std::endl;
 	} while (dbg_iter.next());
 	std::cout << "finishes updating dbg" << std::endl;
 	dbg.delete_file();
@@ -559,22 +567,35 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	// <key, value> : <set id : row set>
 	std::unordered_map<uint64_t, std::vector<uint64_t>> combined_set;
 	uint64_t combined_set_id = 0;
-	uint64_t tmp_cnt = 0
-	for (auto it = normalized_row_vecs_hash.begin(); it != normalized_row_vecs_hash.end(); it++) {
-		if (it->second.size() > 1) {
-			uint64_t tmp_start = 0, tmp_end = 0, sz = it->second.size();
-			while (tmp_end < sz) {
-				tmp_start = tmp_end;
-				if (tmp_end + 1000 >= sz) {
-					tmp_end = sz;
-				} else {
-					tmp_end += 1000;
+	int choice = 1;
+	if (choice == 0) {
+		uint64_t tmp_cnt = 0;
+		for (auto it = normalized_row_vecs_hash.begin(); it != normalized_row_vecs_hash.end(); it++) {
+			if (it->second.size() > 1) {
+				uint64_t tmp_start = 0, tmp_end = 0, sz = it->second.size();
+				while (tmp_end < sz) {
+					tmp_start = tmp_end;
+					if (tmp_end + 1000 >= sz) {
+						tmp_end = sz;
+					} else {
+						tmp_end += 1000;
+					}
+					process_row_vec_group(it->second, tmp_start, tmp_end, combined_set_id_map, combined_set, combined_set_id);
 				}
-				process_row_vec_group(it->second, tmp_start, tmp_end, combined_set_id_map, combined_set, combined_set_id);
 			}
+			tmp_cnt += it->second.size();
+			std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
 		}
-		tmp_cnt += it->second.size();
-		std::cout << "completed percent:" << tmp_cnt / rows << std::endl;
+	} else if (choice == 1) { // approximate
+		uint64_t tmp_cnt = 0;
+		for (auto it = normalized_row_vecs_hash.begin(); it != normalized_row_vecs_hash.end(); it++) {
+			for (auto &data : it->second) {
+				combined_set_id_map[data] = combined_set_id;
+				combined_set[combined_set_id].push_back(data);
+			}
+			tmp_cnt += it->second.size();
+			std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
+		}
 	}
 
 	std::cout << "Start generating compressed iv_buffer" << std::endl;
@@ -644,16 +665,22 @@ void ColoredDbg<qf_obj, key_obj>::iv_buffer_serialize() {
 
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::serialize() {
-	// serialize the CQF
-	if (dbg_alloc_flag == MANTIS_DBG_IN_MEMORY)
-		dbg.serialize(prefix + mantis::CQF_FILE);
-	else
-		dbg.close();
-
 	// serialize the bv buffer last time if needed
 	if (get_num_eqclasses() % mantis::NUM_IV_BUFFER > 0) {
 		compress_iv_buffer();
 		iv_buffer_serialize();
+	}
+
+	// serialize the CQF
+	if (dbg_alloc_flag == MANTIS_DBG_IN_MEMORY)
+		dbg.serialize(prefix + mantis::CQF_FILE);
+	else {
+		dbg.close();
+		// std::vector<std::string> dbg_files = mantis::fs::GetFilesExt(prefix.c_str(), mantis::CQF_FILE);
+		// std::cout << "rename dbg file" << std::endl;
+		// assert(dbg_files.size() == 1);
+		// std::string newFileName = (prefix + mantis::CQF_FILE);
+		// std::rename(dbg_files[0].c_str(), newFileName.c_str());
 	}
 
 	//serialize the eq class id map
