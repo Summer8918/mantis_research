@@ -38,7 +38,7 @@
 #define MANTIS_DBG_IN_MEMORY (0x01)
 #define MANTIS_DBG_ON_DISK (0x02)
 #define INT_VECTOR_BIT_NUM (0x40)
-#define ROW_DIST_THRESHOLD 0x4
+#define ROW_DIST_THRESHOLD 0x8
 #define MAX_LL_INTEGER (0xFFFFFFFFFFFFFFFF)
 #define SECOND_MAX_LL_INTEGER (0xFFFFFFFFFFFFFFFE)
 
@@ -111,6 +111,8 @@ class ColoredDbg {
 		void iv_buffer_serialize();
 		void compress_iv_buffer();
 		void process_row_vec_group(std::vector<uint64_t> &group,
+				uint64_t start,
+				uint64_t end,
 				std::vector<uint64_t> &combined_set_id_map,
 				std::unordered_map<uint64_t, std::vector<uint64_t>> &combined_set,
 				uint64_t &combined_set_id);
@@ -313,19 +315,20 @@ struct pair_hash {
 // <key, value> : <eq class id : combined set id>
 template <class qf_obj, class key_obj>
 void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &group,
+				uint64_t start,
+				uint64_t end,
 				std::vector<uint64_t> &combined_set_id_map,
 				std::unordered_map<uint64_t, std::vector<uint64_t>> &combined_set,
 				uint64_t &combined_set_id) {
-	uint64_t rows = group.size();
 	// Use a custom hash function for pair hash
 	std::unordered_map<std::pair<uint64_t, uint64_t>, int, pair_hash> row_vec_dists;
-	std::cout << "Hash group size: " << rows << std::endl;
-	for (int i = 0; i < rows; i++) {
+	std::cout << "Hash group size: " << end - start << std::endl;
+	for (int i = start; i < end; i++) {
 		uint64_t i_idx = group[i] * num_samples;   // index for row i
-		if (rows >= 200000 && i % 10 == 0) {
-			std::cout << "big loop i: " << i << std::endl;
-		}
-		for (uint64_t j = i + 1; j < rows; j++) {
+		// if (end - start >= 1000 && i % 10 == 0) {
+		// 	std::cout << "big loop i: " << i << std::endl;
+		// }
+		for (uint64_t j = i + 1; j < end; j++) {
 			uint64_t j_idx = group[j] * num_samples;   // index for row j
 			uint64_t ManhattanDist = 0;
 			for (uint64_t k = 0; k < num_samples; k++) {
@@ -354,7 +357,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 			// MAX_LL_INTEGER means not assign set id, every set has a id
 			if (combined_set_id_map[eq_class_id1] == MAX_LL_INTEGER &&
 						combined_set_id_map[eq_class_id2 == MAX_LL_INTEGER]) {
-				std::cout << "row1 and row2 do not belong to any set neither" << std::endl;
+				//std::cout << "row1 and row2 do not belong to any set neither" << std::endl;
 				combined_set_id_map[eq_class_id1] = combined_set_id;
                 combined_set_id_map[eq_class_id2] = combined_set_id;
 				combined_set[combined_set_id].push_back({eq_class_id1});
@@ -366,7 +369,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 			else if (combined_set_id_map[eq_class_id1] != MAX_LL_INTEGER &&
 						combined_set_id_map[eq_class_id2] == MAX_LL_INTEGER) {
 				in_a_set_flag = true;
-				std::cout << "row1 belong to one set, row2 do not belong to any set" << std::endl;
+				//std::cout << "row1 belong to one set, row2 do not belong to any set" << std::endl;
 				uint64_t id = combined_set_id_map[eq_class_id1];
 				if (combined_set.find(id) == combined_set.end()) {
 					std::cout << "cannot find id:" << id << " in combined_set" << std::endl;
@@ -395,7 +398,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 			else if (combined_set_id_map[eq_class_id2] != MAX_LL_INTEGER
 						&& combined_set_id_map[eq_class_id1] == MAX_LL_INTEGER) {
 				in_a_set_flag = true;
-				std::cout << "row2 belong to one set, row1 do not belong to any set" << std::endl;
+				//std::cout << "row2 belong to one set, row1 do not belong to any set" << std::endl;
 				uint64_t id = combined_set_id_map[eq_class_id2];
 				if (combined_set.find(id) == combined_set.end()) {
 					std::cout << "cannot find id:" << id << " in combined_set" << std::endl;
@@ -423,7 +426,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 			// When eq_class_id1 and eq_class_id2 belongs to different set, try to merge them.
 			else {
 				in_a_set_flag = true;
-				std::cout << " When eq_class_id1 and eq_class_id2 belongs to different set, try to merge them." << std::endl;
+				//std::cout << " When eq_class_id1 and eq_class_id2 belongs to different set, try to merge them." << std::endl;
 				uint64_t id1 = combined_set_id_map[eq_class_id1];
 				uint64_t id2 = combined_set_id_map[eq_class_id2];
 				if (combined_set.find(id1) == combined_set.end()) {
@@ -434,6 +437,10 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 				}
 				assert(combined_set.find(id1) != combined_set.end());
 				assert(combined_set.find(id2) != combined_set.end());
+				if (combined_set[id1].size() >= 5000 || combined_set[id1].size() >= 5000) {
+					std::cout << "combined_set[id1].size() > 10000 && combined_set[id1].size() > 1000" << std::endl;
+					continue;
+				}
 				for (auto &node1 : combined_set[id1]) {
 					for (auto &node2 : combined_set[id2]) {
 						std::pair<uint64_t, uint64_t> p = {node1, node2};
@@ -506,13 +513,17 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 	dbg.delete_file();
 	CQF<key_obj> newCqf(qbits, keybits, hashmode, seed, prefix + mantis::CQF_FILE);
 	Iterator dbg_iter = Iterator(dbg.get_cqf(), true);
+	std::cout << "start to update dbg" << std::endl;
+	uint64_t tmp_cnt = 0;
 	do {
 		typename key_obj::kmer_t key = dbg_iter.key();
 		uint64_t cnt = dbg_iter.cnt();
 		uint64_t val = dbg_iter.val();
 		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
+		tmp_cnt++;
+		std::cout << "tmp_cnt:" << tmp_cnt << std::endl;
 	} while (dbg_iter.next());
-
+	std::cout << "finishes updating dbg" << std::endl;
 	dbg.delete_file();
 	dbg = newCqf;
 }
@@ -528,10 +539,13 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	std::cout << "rows:" << rows << std::endl;
 	std::unordered_map<uint64_t, std::vector<uint64_t>> normalized_row_vecs_hash;
 	for (uint64_t i = 0; i < rows; i++) {
-		std::vector<uint64_t> normalized_counter(num_samples, 0);
+		std::vector<uint64_t> normalized_counter(num_samples + 1, 0);
+		uint64_t tmp_sum = 0;
 		for (uint64_t j = 0; j < num_samples; j++) {
 			normalized_counter[j] = iv_buffer[i * num_samples + j] / (ROW_DIST_THRESHOLD + 1);
+			tmp_sum += iv_buffer[i * num_samples + j];
 		}
+		normalized_counter[num_samples] = tmp_sum / (ROW_DIST_THRESHOLD + 1);
 		uint64_t hash_val = MurmurHash64A((void *)normalized_counter.data(),
 							normalized_counter.size() * 8, 2038074743);
 		normalized_row_vecs_hash[hash_val].push_back(i);
@@ -545,10 +559,22 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	// <key, value> : <set id : row set>
 	std::unordered_map<uint64_t, std::vector<uint64_t>> combined_set;
 	uint64_t combined_set_id = 0;
+	uint64_t tmp_cnt = 0
 	for (auto it = normalized_row_vecs_hash.begin(); it != normalized_row_vecs_hash.end(); it++) {
 		if (it->second.size() > 1) {
-			process_row_vec_group(it->second, combined_set_id_map, combined_set, combined_set_id);
+			uint64_t tmp_start = 0, tmp_end = 0, sz = it->second.size();
+			while (tmp_end < sz) {
+				tmp_start = tmp_end;
+				if (tmp_end + 1000 >= sz) {
+					tmp_end = sz;
+				} else {
+					tmp_end += 1000;
+				}
+				process_row_vec_group(it->second, tmp_start, tmp_end, combined_set_id_map, combined_set, combined_set_id);
+			}
 		}
+		tmp_cnt += it->second.size();
+		std::cout << "completed percent:" << tmp_cnt / rows << std::endl;
 	}
 
 	std::cout << "Start generating compressed iv_buffer" << std::endl;
