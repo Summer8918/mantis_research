@@ -528,6 +528,10 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 		//std::cout << "get val"<< std::endl;
 		uint64_t val = dbg_iter.val();
 		//std::cout << "insert"<< std::endl;
+		auto it = prev_eqclassid_to_new.find(cnt);
+		if (it != prev_eqclassid_to_new.end()) {
+			cnt = it->second;
+		}
 		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
 		tmp_cnt++;
 	} while (dbg_iter.next());
@@ -594,6 +598,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 				combined_set[combined_set_id].push_back(data);
 			}
 			tmp_cnt += it->second.size();
+			combined_set_id++;
 			std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
 		}
 	}
@@ -606,19 +611,23 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	// MAX_LL_INTEGER means the row form a set with one element
 	for (uint64_t i = 0; i < combined_set_id_map.size(); i++) {
 		uint64_t id = combined_set_id_map[i];
+		if (id != MAX_LL_INTEGER && id!= SECOND_MAX_LL_INTEGER  && combined_set.find(id) == combined_set.end()) {
+			std::cout << "combined_set.find(id) == combined_set.end()" << std::endl;
+			std::cout << "i=" << i << std::endl;
+		}
 		if (id != MAX_LL_INTEGER && id!= SECOND_MAX_LL_INTEGER && combined_set[id].size() > 0) {
 			std::vector<uint64_t> row_set = combined_set[id];
 			std::vector<uint64_t> new_row_vec(num_samples, 0);
 			// set the row vector of a set with more than to two element with largest count for every sample
 			for (uint64_t j = 0; j < num_samples; j++) {
 				for (auto &row : row_set) {
-					if (iv_buffer[row * num_samples + j] > new_row_vec[i]) {
+					if (iv_buffer[row * num_samples + j] > new_row_vec[j]) {
 						new_row_vec[j] = iv_buffer[row * num_samples + i];
 					}
 				}
 			}
 			for (uint64_t j = 0; j < num_samples; j++) {
-				new_iv_buffer[new_eqclass_id + j] = new_row_vec[j];
+				new_iv_buffer[new_eqclass_id * num_samples + j] = new_row_vec[j];
 			}
 
 			for (auto &row : row_set) {
@@ -630,7 +639,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 		// set only with one element, the row vector is same
 		else if (combined_set_id_map[i] == MAX_LL_INTEGER) {
 			for (uint64_t j = 0; j < num_samples; j++) {
-				new_iv_buffer[new_eqclass_id + j] = iv_buffer[i * num_samples + j];
+				new_iv_buffer[new_eqclass_id * num_samples + j] = iv_buffer[i * num_samples + j];
 			}
 			combined_set_id_map[i] == SECOND_MAX_LL_INTEGER;
 			prev_eqclassid_to_new_eqclassid[i] = new_eqclass_id;
