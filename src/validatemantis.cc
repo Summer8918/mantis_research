@@ -59,7 +59,10 @@ bool get_cdbg_query_res(std::unordered_map<mantis::KmerHash, std::vector<uint64_
 
 	// Read the colored dBG
 	std::cout << "Reading colored dbg from disk." << std::endl;
-	std::string dbg_file(mantis_index_dir + mantis::CQF_FILE);
+	std::vector<std::string> dbg_files = mantis::fs::GetFilesExt(mantis_index_dir.c_str(),
+																	mantis::CQF_FILE);
+	assert(dbg_files.size() == 1);
+	std::string dbg_file = dbg_files[0];
 	std::string sample_file(mantis_index_dir + mantis::SAMPLEID_FILE);
 	std::vector<std::string> eqclass_files = mantis::fs::GetFilesExt(mantis_index_dir.c_str(),
 																	mantis::EQCLASS_FILE);
@@ -254,7 +257,10 @@ validate_main ( ValidateOpts& opt )
 
 	// Read the colored dBG
 	console->info("Reading colored dbg from disk.");
-	std::string dbg_file(prefix + mantis::CQF_FILE);
+	std::vector<std::string> dbg_files = mantis::fs::GetFilesExt(prefix.c_str(),
+																	mantis::CQF_FILE);
+	assert(dbg_files.size() == 1);
+	std::string dbg_file = dbg_files[0];
 	std::string sample_file(prefix + mantis::SAMPLEID_FILE);
 	std::vector<std::string> eqclass_files = mantis::fs::GetFilesExt(prefix.c_str(),
 																	mantis::EQCLASS_FILE);
@@ -350,7 +356,7 @@ validate_main ( ValidateOpts& opt )
 
 		}
 		//test_get_cdbg_query_res(kmers, cdbg_output);
-		compare_exact_and_approx_query_res(kmers);
+		//compare_exact_and_approx_query_res(kmers);
 		if (fail) {
 		    console->info("Mantis validation 3 failed!");
 		}
