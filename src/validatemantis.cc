@@ -364,10 +364,58 @@ validate_main ( ValidateOpts& opt )
 		//compare_exact_and_approx_query_res(kmers);
 		console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
 		if (fail) {
-		    console->info("Mantis validation 3 failed!");
+		    console->info("Mantis exact validation failed!");
 		}
 		else {
-		    console->info("Mantis validation 3 passed!");
+		    console->info("Mantis exact validation passed!");
+		}
+	}
+
+	fail = false;
+	total_cnt = 0, correct_cnt = 0;
+	
+	for (auto kmers : multi_kmers) {
+		std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> cdbg_output = cdbg.find_samples3(kmers);
+		for (auto kmer : kmers) {
+			mantis::QuerySet tmpKmerSet;
+			tmpKmerSet.insert(kmer);
+			KeyObject k(kmer, 0, 0);
+			for (uint64_t i = 0; i < nqf; i++) {
+				uint64_t count = cqfs[i].query(k, 0);
+				uint64_t cdbg_count = 0;
+				if (cdbg_output.find(kmer) == cdbg_output.end()) {
+					cdbg_count = 0;
+				} else if (cdbg_output[kmer].size() < nqf) {
+					console->info("cdbg_output[kmer].size() < nqf");
+				} else {
+					cdbg_count = cdbg_output[kmer][i];
+				}
+
+				if (count > cdbg_count || cdbg_count - count > ROW_DIST_THRESHOLD) {
+					fail = true;
+					console->info("Failed for kmer {} in sample: {} original CQF {} cdbg {}",
+											kmer, inobjects[i].sample_id, count, cdbg_count);
+					uint64_t eq_id = cdbg.getEqclassid(kmer);
+					console->info("The eqid of the kmer is {}", eq_id);
+				} else {
+					correct_cnt += 1;
+				}
+				total_cnt += 1;
+				// else if (count > 0){
+				// 	console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
+				// 							kmer, inobjects[i].sample_id, count, cdbg_output[i]);
+				// }
+			}
+
+		}
+		//test_get_cdbg_query_res(kmers, cdbg_output);
+		//compare_exact_and_approx_query_res(kmers);
+		console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
+		if (fail) {
+		    console->info("Mantis approximate validation failed!");
+		}
+		else {
+		    console->info("Mantis approximate validation passed!");
 		}
 	}
 

@@ -819,12 +819,12 @@ ColoredDbg<qf_obj,key_obj>::find_samples3(const mantis::QuerySet& kmers) {
 			}
 		}
 		eqid_res_map[eqclass_id] = sample_kmers_count;
-		if (eqclass_id == 1) {
-			std::cout << "sample_kmers_count for eq id 0" << std::endl;
-			for (int i = 0; i < num_samples; i++) {
-				std::cout << sample_kmers_count[i] << std::endl;
-			}
-		}
+		// if (eqclass_id == 1) {
+		// 	std::cout << "sample_kmers_count for eq id 0" << std::endl;
+		// 	for (int i = 0; i < num_samples; i++) {
+		// 		std::cout << sample_kmers_count[i] << std::endl;
+		// 	}
+		// }
 	}
 
 	std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> res;
