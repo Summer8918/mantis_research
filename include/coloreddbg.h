@@ -140,7 +140,7 @@ class ColoredDbg {
 		bool flush_eqclass_dis{false};
 		std::time_t start_time_;
 		spdlog::logger* console;
-		uint64_t new_eqclass_id = 0;
+		uint64_t new_eqclass_id = 1;
 };
 
 template <class T>
@@ -530,11 +530,13 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 		//std::cout << "insert"<< std::endl;
 		auto it = prev_eqclassid_to_new.find(cnt);
 		if (it != prev_eqclassid_to_new.end()) {
+			//std::cout << "old eqid" << cnt << " new id:" << it->second << std::endl;
 			cnt = it->second;
 		}
 		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
 		tmp_cnt++;
 	} while (dbg_iter.next());
+	std::cout << "tmp_cnt:" << tmp_cnt << std::endl;
 	std::cout << "finishes updating dbg" << std::endl;
 	dbg.delete_file();
 	dbg = newCqf;
@@ -559,8 +561,8 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 		}
 		normalized_counter[num_samples] = tmp_sum / (ROW_DIST_THRESHOLD + 1);
 		uint64_t hash_val = MurmurHash64A((void *)normalized_counter.data(),
-							normalized_counter.size() * 8, 2038074743);
-		normalized_row_vecs_hash[hash_val].push_back(i);
+											normalized_counter.size() * 8, 2038074743);
+		normalized_row_vecs_hash[hash_val].push_back(i + 1);
 	}
 
 	std::cout << "Finishes hashing row vectors into different group" << std::endl;
@@ -594,7 +596,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 		uint64_t tmp_cnt = 0;
 		for (auto it = normalized_row_vecs_hash.begin(); it != normalized_row_vecs_hash.end(); it++) {
 			for (auto &data : it->second) {
-				combined_set_id_map[data] = combined_set_id;
+				combined_set_id_map[data - 1] = combined_set_id;
 				combined_set[combined_set_id].push_back(data);
 			}
 			tmp_cnt += it->second.size();
@@ -614,39 +616,50 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 		if (id != MAX_LL_INTEGER && id!= SECOND_MAX_LL_INTEGER  && combined_set.find(id) == combined_set.end()) {
 			std::cout << "combined_set.find(id) == combined_set.end()" << std::endl;
 			std::cout << "i=" << i << std::endl;
+			while (1) {}
 		}
-		if (id != MAX_LL_INTEGER && id!= SECOND_MAX_LL_INTEGER && combined_set[id].size() > 0) {
+		if (id != MAX_LL_INTEGER && id != SECOND_MAX_LL_INTEGER && combined_set[id].size() > 0) {
 			std::vector<uint64_t> row_set = combined_set[id];
 			std::vector<uint64_t> new_row_vec(num_samples, 0);
+			std::cout << "eq id " << new_eqclass_id << " size:" << row_set.size() << std::endl;
+				// char inputChar;
+    			// std::cout << "Enter a character: ";
+    			// std::cin >> inputChar;
+    			// std::cout << "You entered: " << inputChar << std::endl;
 			// set the row vector of a set with more than to two element with largest count for every sample
-			for (uint64_t j = 0; j < num_samples; j++) {
-				for (auto &row : row_set) {
-					if (iv_buffer[row * num_samples + j] > new_row_vec[j]) {
-						new_row_vec[j] = iv_buffer[row * num_samples + i];
+			for (auto &row : row_set) {
+				for (uint64_t j = 0; j < num_samples; j++) {
+					uint64_t val = iv_buffer[(row - 1) * num_samples + j];
+					if (val > new_row_vec[j]) {
+						new_row_vec[j] = val;
 					}
 				}
-			}
-			for (uint64_t j = 0; j < num_samples; j++) {
-				new_iv_buffer[new_eqclass_id * num_samples + j] = new_row_vec[j];
-			}
-
-			for (auto &row : row_set) {
-				combined_set_id_map[row] = SECOND_MAX_LL_INTEGER;
+				combined_set_id_map[row - 1] = SECOND_MAX_LL_INTEGER;
 				prev_eqclassid_to_new_eqclassid[row] = new_eqclass_id;
 			}
+			std::cout << " new row vector for new eqclass id" << new_eqclass_id << std::endl;
+			for (uint64_t j = 0; j < num_samples; j++) {
+				std::cout << new_row_vec[j] << " ";
+				new_iv_buffer[(new_eqclass_id - 1)* num_samples + j] = new_row_vec[j];
+			}
+			std::cout << std::endl;
 			new_eqclass_id++;
 		}
 		// set only with one element, the row vector is same
 		else if (combined_set_id_map[i] == MAX_LL_INTEGER) {
 			for (uint64_t j = 0; j < num_samples; j++) {
-				new_iv_buffer[new_eqclass_id * num_samples + j] = iv_buffer[i * num_samples + j];
+				new_iv_buffer[(new_eqclass_id - 1) * num_samples + j] = iv_buffer[i * num_samples + j];
 			}
-			combined_set_id_map[i] == SECOND_MAX_LL_INTEGER;
+			combined_set_id_map[i] = SECOND_MAX_LL_INTEGER;
 			prev_eqclassid_to_new_eqclassid[i] = new_eqclass_id;
 			new_eqclass_id++;
 		}
 	}
-	std::cout << "Finishes generate compressed iv_buffer" << std::endl;
+	for (auto it = prev_eqclassid_to_new_eqclassid.begin(); it != prev_eqclassid_to_new_eqclassid.end(); it++) {
+		std::cout << "old eqid" << it->first << " new eqid" << it->second << std::endl;
+	}
+	iv_buffer = new_iv_buffer;
+	std::cout << "Finishes generate compressed iv_buffer 2" << std::endl;
 	update_dbg(prev_eqclassid_to_new_eqclassid);
 }
 
@@ -806,6 +819,12 @@ ColoredDbg<qf_obj,key_obj>::find_samples3(const mantis::QuerySet& kmers) {
 			}
 		}
 		eqid_res_map[eqclass_id] = sample_kmers_count;
+		if (eqclass_id == 1) {
+			std::cout << "sample_kmers_count for eq id 0" << std::endl;
+			for (int i = 0; i < num_samples; i++) {
+				std::cout << sample_kmers_count[i] << std::endl;
+			}
+		}
 	}
 
 	std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> res;

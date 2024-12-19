@@ -323,6 +323,7 @@ validate_main ( ValidateOpts& opt )
 
 
 	fail = false;
+	int total_cnt = 0, correct_cnt = 0;
 	
 	for (auto kmers : multi_kmers) {
 		std::unordered_map<mantis::KmerHash, std::vector<uint64_t>> cdbg_output = cdbg.find_samples3(kmers);
@@ -340,14 +341,18 @@ validate_main ( ValidateOpts& opt )
 				} else {
 					cdbg_count = cdbg_output[kmer][i];
 				}
-				
+
 				if (cdbg_count != count) {
+
 					fail = true;
 					console->info("Failed for kmer {} in sample: {} original CQF {} cdbg {}",
 											kmer, inobjects[i].sample_id, count, cdbg_count);
 					uint64_t eq_id = cdbg.getEqclassid(kmer);
 					console->info("The eqid of the kmer is {}", eq_id);
-				} 
+				} else {
+					correct_cnt += 1;
+				}
+				total_cnt += 1;
 				// else if (count > 0){
 				// 	console->info("Passed kmer {} for sample: {} original CQF {} cdbg {}",
 				// 							kmer, inobjects[i].sample_id, count, cdbg_output[i]);
@@ -357,6 +362,7 @@ validate_main ( ValidateOpts& opt )
 		}
 		//test_get_cdbg_query_res(kmers, cdbg_output);
 		//compare_exact_and_approx_query_res(kmers);
+		console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
 		if (fail) {
 		    console->info("Mantis validation 3 failed!");
 		}
