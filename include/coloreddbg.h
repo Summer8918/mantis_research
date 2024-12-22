@@ -534,6 +534,11 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 			cnt = it->second;
 		}
 		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
+		if (ret == QF_NO_SPACE) {
+			// This means that auto_resize failed. 
+			console->error("The CQF is full and auto resize failed. Please rerun build with a bigger size.");
+			exit(1);
+		}
 		tmp_cnt++;
 	} while (dbg_iter.next());
 	std::cout << "tmp_cnt:" << tmp_cnt << std::endl;
@@ -590,7 +595,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 				}
 			}
 			tmp_cnt += it->second.size();
-			std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
+			// std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
 		}
 	} else if (choice == 1) { // approximate
 		uint64_t tmp_cnt = 0;
@@ -601,7 +606,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 			}
 			tmp_cnt += it->second.size();
 			combined_set_id++;
-			std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
+			// std::cout << "completed percent:" << 1.0 * tmp_cnt / rows << std::endl;
 		}
 	}
 
@@ -621,7 +626,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 		if (id != MAX_LL_INTEGER && id != SECOND_MAX_LL_INTEGER && combined_set[id].size() > 0) {
 			std::vector<uint64_t> row_set = combined_set[id];
 			std::vector<uint64_t> new_row_vec(num_samples, 0);
-			std::cout << "eq id " << new_eqclass_id << " size:" << row_set.size() << std::endl;
+			// std::cout << "eq id " << new_eqclass_id << " size:" << row_set.size() << std::endl;
 				// char inputChar;
     			// std::cout << "Enter a character: ";
     			// std::cin >> inputChar;
@@ -637,12 +642,12 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 				combined_set_id_map[row - 1] = SECOND_MAX_LL_INTEGER;
 				prev_eqclassid_to_new_eqclassid[row] = new_eqclass_id;
 			}
-			std::cout << " new row vector for new eqclass id" << new_eqclass_id << std::endl;
-			for (uint64_t j = 0; j < num_samples; j++) {
-				std::cout << new_row_vec[j] << " ";
-				new_iv_buffer[(new_eqclass_id - 1)* num_samples + j] = new_row_vec[j];
-			}
-			std::cout << std::endl;
+			// std::cout << " new row vector for new eqclass id" << new_eqclass_id << std::endl;
+			// for (uint64_t j = 0; j < num_samples; j++) {
+			// 	std::cout << new_row_vec[j] << " ";
+			// 	new_iv_buffer[(new_eqclass_id - 1)* num_samples + j] = new_row_vec[j];
+			// }
+			// std::cout << std::endl;
 			new_eqclass_id++;
 		}
 		// set only with one element, the row vector is same
@@ -655,9 +660,9 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 			new_eqclass_id++;
 		}
 	}
-	for (auto it = prev_eqclassid_to_new_eqclassid.begin(); it != prev_eqclassid_to_new_eqclassid.end(); it++) {
-		std::cout << "old eqid" << it->first << " new eqid" << it->second << std::endl;
-	}
+	// for (auto it = prev_eqclassid_to_new_eqclassid.begin(); it != prev_eqclassid_to_new_eqclassid.end(); it++) {
+	// 	std::cout << "old eqid" << it->first << " new eqid" << it->second << std::endl;
+	// }
 	iv_buffer = new_iv_buffer;
 	std::cout << "Finishes generate compressed iv_buffer 2" << std::endl;
 	update_dbg(prev_eqclassid_to_new_eqclassid);
