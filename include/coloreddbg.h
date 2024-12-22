@@ -563,7 +563,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	uint64_t rows = iv_buffer.size() / num_samples;    // 20,000,000
 	// When iv buffer is not full
 	if (get_num_eqclasses() % mantis::NUM_IV_BUFFER != 0) {
-		rows = get_num_eqclasses() * num_samples;
+		rows = get_num_eqclasses() - prevEqId;
 	}
 
 	std::cout << "Start to compress iv buffer" << std::endl;
