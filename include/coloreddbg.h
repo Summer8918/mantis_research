@@ -116,7 +116,7 @@ class ColoredDbg {
 				std::vector<uint64_t> &combined_set_id_map,
 				std::unordered_map<uint64_t, std::vector<uint64_t>> &combined_set,
 				uint64_t &combined_set_id);
-		void update_dbg(std::unordered_map<uint64_t, uint64_t> &prev_eqclassid_to_new);
+		void update_dbg();
 		//void reshuffle_bit_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
 		//													 uint64_t>>& map);
 		//void reshuffle_count_vectors(cdbg_bv_map_t<__uint128_t, std::pair<uint64_t,
@@ -128,6 +128,8 @@ class ColoredDbg {
 		cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>> eqclass_map;
 		// previous eq class id -> new eq class id
 		std::unordered_map<uint64_t, uint64_t> prev_eqclassid_to_new_eqclassid;
+		// the previous largest eq id of lastest compressed row vectors
+		uint64_t prevEqId = 0;
 		CQF<key_obj> dbg;
 
 		IntVector iv_buffer;
@@ -471,7 +473,7 @@ void ColoredDbg<qf_obj, key_obj>::process_row_vec_group(std::vector<uint64_t> &g
 
 
 template <class qf_obj, class key_obj>
-void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64_t> &prev_eqclassid_to_new) {
+void ColoredDbg<qf_obj, key_obj>::update_dbg() {
 	struct Iterator2 {
 		QFi qfi;
 		typename key_obj::kmer_t kmer;
@@ -518,7 +520,7 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 	CQF<key_obj> newCqf(qbits, keybits, hashmode, seed, prefix + std::to_string(num_serializations) + "_" + mantis::CQF_FILE);
 	//std::cout << "start to create iterator " << std::endl;
 	Iterator2 dbg_iter = Iterator2(dbg.get_cqf(), true);
-	//std::cout << "start to update dbg" << std::endl;
+	std::cout << "start to update dbg" << std::endl;
 	uint64_t tmp_cnt = 0;
 	do {
 		//std::cout << "tmp_cnt:" << tmp_cnt << " get key"<< std::endl;
@@ -526,15 +528,24 @@ void ColoredDbg<qf_obj, key_obj>::update_dbg(std::unordered_map<uint64_t, uint64
 		//std::cout << "get cnt"<< std::endl;
 		uint64_t cnt = dbg_iter.cnt();
 		//std::cout << "get val"<< std::endl;
-		uint64_t val = dbg_iter.val();
+		uint64_t val = 0;
 		//std::cout << "insert"<< std::endl;
-		auto it = prev_eqclassid_to_new.find(cnt);
-		if (it != prev_eqclassid_to_new.end()) {
+		// check: the k-mer should not already be present.
+		uint64_t count = newCqf.query(KeyObject(key,0,cnt), QF_NO_LOCK |
+													   QF_KEY_IS_HASH);
+		if (count > 0) {
+			console->error("in update dbg K-mer was already present. kmer: {} eqid: {}", key, count);
+			exit(1);
+		}
+		auto it = prev_eqclassid_to_new_eqclassid.find(cnt);
+		if (it != prev_eqclassid_to_new_eqclassid.end()) {
 			//std::cout << "old eqid" << cnt << " new id:" << it->second << std::endl;
 			cnt = it->second;
 		}
-		int ret = newCqf.insert(KeyObject(key, val, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
+
+		int ret = newCqf.insert(KeyObject(key, 0, cnt), QF_NO_LOCK | QF_KEY_IS_HASH);
 		if (ret == QF_NO_SPACE) {
+			std::cout << "tmp_cnt:" << tmp_cnt << std::endl;
 			// This means that auto_resize failed. 
 			console->error("The CQF is full and auto resize failed. Please rerun build with a bigger size.");
 			exit(1);
@@ -554,6 +565,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	if (get_num_eqclasses() % mantis::NUM_IV_BUFFER != 0) {
 		rows = get_num_eqclasses() * num_samples;
 	}
+
 	std::cout << "Start to compress iv buffer" << std::endl;
 	std::cout << "rows:" << rows << std::endl;
 	std::unordered_map<uint64_t, std::vector<uint64_t>> normalized_row_vecs_hash;
@@ -640,7 +652,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 					}
 				}
 				combined_set_id_map[row - 1] = SECOND_MAX_LL_INTEGER;
-				prev_eqclassid_to_new_eqclassid[row] = new_eqclass_id;
+				prev_eqclassid_to_new_eqclassid[row + prevEqId] = new_eqclass_id;
 			}
 			// std::cout << " new row vector for new eqclass id" << new_eqclass_id << std::endl;
 			// for (uint64_t j = 0; j < num_samples; j++) {
@@ -656,7 +668,7 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 				new_iv_buffer[(new_eqclass_id - 1) * num_samples + j] = iv_buffer[i * num_samples + j];
 			}
 			combined_set_id_map[i] = SECOND_MAX_LL_INTEGER;
-			prev_eqclassid_to_new_eqclassid[i] = new_eqclass_id;
+			prev_eqclassid_to_new_eqclassid[i + prevEqId] = new_eqclass_id;
 			new_eqclass_id++;
 		}
 	}
@@ -665,7 +677,8 @@ void ColoredDbg<qf_obj, key_obj>::compress_iv_buffer() {
 	// }
 	iv_buffer = new_iv_buffer;
 	std::cout << "Finishes generate compressed iv_buffer 2" << std::endl;
-	update_dbg(prev_eqclassid_to_new_eqclassid);
+	update_dbg();
+	prevEqId += rows;
 }
 
 template <class qf_obj, class key_obj>
@@ -1003,8 +1016,7 @@ cdbg_bv_map_t<__uint128_t, std::pair<uint64_t, uint64_t>>& ColoredDbg<qf_obj,
 				// The bit vector buffer is full.
 				console->info("Serializing int vector with {} eq classes.",
 											get_num_eqclasses());
-				console->info("new_eqclass_id:",
-											new_eqclass_id);
+				console->info("new_eqclass_id: {}", new_eqclass_id);
 				compress_iv_buffer();
 				iv_buffer_serialize();
 			}
