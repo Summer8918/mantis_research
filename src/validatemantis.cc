@@ -305,8 +305,8 @@ validate_main ( ValidateOpts& opt )
 		// Validate the cdbg output
 		for (uint64_t i = 0; i < nqf; i++) {
 			if (fraction_present[i] != result[i]) {
-				console->info("Failed for sample: {} original CQF {} cdbg {}",
-											inobjects[i].sample_id, fraction_present[i], result[i]);
+				// console->info("Failed for sample: {} original CQF {} cdbg {}",
+											// inobjects[i].sample_id, fraction_present[i], result[i]);
 				fail = true;
 				//abort();
 			}
@@ -345,10 +345,10 @@ validate_main ( ValidateOpts& opt )
 				if (cdbg_count != count) {
 
 					fail = true;
-					console->info("Failed for kmer {} in sample: {} original CQF {} cdbg {}",
-											kmer, inobjects[i].sample_id, count, cdbg_count);
-					uint64_t eq_id = cdbg.getEqclassid(kmer);
-					console->info("The eqid of the kmer is {}", eq_id);
+				// 	console->info("Failed for kmer {} in sample: {} original CQF {} cdbg {}",
+				// 							kmer, inobjects[i].sample_id, count, cdbg_count);
+				// 	uint64_t eq_id = cdbg.getEqclassid(kmer);
+				// 	console->info("The eqid of the kmer is {}", eq_id);
 				} else {
 					correct_cnt += 1;
 				}
@@ -362,7 +362,9 @@ validate_main ( ValidateOpts& opt )
 		}
 		//test_get_cdbg_query_res(kmers, cdbg_output);
 		//compare_exact_and_approx_query_res(kmers);
-		console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
+		if (total_cnt > 0) {
+			console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
+		}
 		if (fail) {
 		    console->info("Mantis exact validation failed!");
 		}
@@ -410,7 +412,9 @@ validate_main ( ValidateOpts& opt )
 		}
 		//test_get_cdbg_query_res(kmers, cdbg_output);
 		//compare_exact_and_approx_query_res(kmers);
-		console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
+		if (total_cnt > 0) {
+			console->info("correct ratio: {}", 1.0 * correct_cnt / total_cnt);
+		}
 		if (fail) {
 		    console->info("Mantis approximate validation failed!");
 		}
